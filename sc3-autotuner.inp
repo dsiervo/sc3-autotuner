@@ -18,7 +18,7 @@ tf = 2020-12-01 23:59:59
 
 # Pickers of stations/channels to tune
 #stations = CM.BAR2.00.HH, CM.BRJC.00.HH*, CM.PDSC.10.HN*, CM.PAM.20.EH*, CM.RUS.00.HH*,CM.PTB.00.HH*, CM.OCA.00.HH
-stations = CM.BAR2.20.EH, CM.PDSC.10.HN, CM.BRJC.00.HH
+stations = CM.BAR2.20.EH, CM.PDSC.10.HN, CM.GARC.00.HH
 
 # IP to FDSN for waveforms download
 fdsn_ip = http://10.100.100.13:8091
