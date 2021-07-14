@@ -34,13 +34,19 @@ def picker_tuner(cursor, ti, tf, params):
     station_list = params['stations'].split(',')
     ic(station_list)
     for station_str in station_list:
-        # cleaning station_str
+        # cleaning station_str and getting station codes
         station_str = station_str.strip('\n').strip(' ')
         ic(station_str)
-        # creating a station_data object
-        sta_data = StationData(cursor, station_str)
+        net, sta, loc, ch = station_str.split('.')
+        
+        # searching for station coordinates
+        query = Query(cursor=cursor,
+                      query_type='station_coords',
+                      dic_data={'net': net, 'sta': sta, 'loc': loc})
+        lat, lon = query.execute_query()
+
         # creating a station object
-        station = sta_data.create_station()
+        station = Station(float(lat), float(lon), net, sta, loc, ch)
         ic(station)
         
         # for each phase
@@ -108,37 +114,6 @@ class Query:
             return self.cursor.fetchone()
         else:
             raise Exception('query_type does not match with picks or station_coords')
-
-
-class StationData:
-    def __init__(self, cursor, station_str):
-        self.cursor = cursor
-        self.station_str = station_str
-        self.query_dir = os.path.dirname(os.path.realpath(__file__))
-
-    @property
-    def coords_query(self):
-        query_path = os.path.join(self.query_dir, 'coords_query.sql')
-        query_str = open(query_path).read()
-        return query_str.format(net=self.net, sta=self.sta, loc=self.loc)
-    
-    def get_station_codes(self):
-        """Creates net, sta, loc, ch"""
-        self.net, self.sta, self.loc, self.ch = self.station_str.split('.')
-        self.dic_data = {'net': self.net, 'sta': self.sta, 'loc': self.loc}
-
-    def get_station_coords(self):
-        query = Query(cursor=self.cursor,
-                      query_type='station_coords',
-                      dic_data=self.dic_data)
-        self.lat, self.lon = query.execute_query()
-
-    def create_station(self):
-        self.get_station_codes()
-        self.get_station_coords()
-        station = Station(float(self.lat), float(self.lon),
-                          self.net, self.sta, self.loc, self.ch)
-        return station
 
 
 @dataclass(order=True, frozen=True)
