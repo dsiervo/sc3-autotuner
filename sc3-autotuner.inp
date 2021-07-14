@@ -1,0 +1,31 @@
+# =======================================
+# General parameters
+# =======================================
+
+# Mode to operate, can be picker or associator
+tune_mode = picker
+
+# IP to server with SQL data base for events query
+db_ip = 10.100.100.232
+
+# Initial and final times for picks searching
+ti = 2020-10-01 00:00:00
+tf = 2020-12-01 23:59:59
+
+# =======================================
+# pick_tuner options
+# =======================================
+
+# Pickers of stations/channels to tune
+#stations = CM.BAR2.00.HH, CM.BRJC.00.HH*, CM.PDSC.10.HN*, CM.PAM.20.EH*, CM.RUS.00.HH*,CM.PTB.00.HH*, CM.OCA.00.HH
+stations = CM.BAR2.20.EH, CM.PDSC.10.HN, CM.BRJC.00.HH
+
+# IP to FDSN for waveforms download
+fdsn_ip = http://10.100.100.13:8091
+
+# Maximun number of picks by station
+max_picks = 190
+
+# =======================================
+# assoc_tuner options
+# =======================================
