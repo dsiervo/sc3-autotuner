@@ -1,4 +1,5 @@
 SELECT
+    Stream.code,
     Station.latitude,
     Station.longitude
 FROM
@@ -13,5 +14,6 @@ where
 	Network.code = "{net}"
 	and Station.code = "{sta}"
     and SensorLocation.code = "{loc}"
+    and Stream.code like "{ch}%"
     and Stream.code not like "BH%"
-GROUP BY Station.code #, SensorLocation.code
+GROUP BY Station.code, SensorLocation.code, Stream.code

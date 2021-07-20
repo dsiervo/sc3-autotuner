@@ -4,10 +4,13 @@ Created on Jun 24 2021
 20191201T000000 - 20210101T000000
 @author: Daniel Siervo, emetdan@gmail.com
 """
-from dataclasses import dataclass
+
 import os
-from icecream import ic
-ic.configureOutput(prefix='debug| ')
+from download_data import *
+import obspy
+from icecream import ic, install
+ic.configureOutput(prefix='debug| ')  # , includeContext=True)
+install()
 
 
 def picker_tuner(cursor, ti, tf, params):
@@ -30,6 +33,23 @@ def picker_tuner(cursor, ti, tf, params):
         bayesian optimization. Format: yyyy-MM-dd hh:mm:ss
     """
 
+    # defining radius of 2 degrees in km for picks search
+    RADIUS = 111*2
+    
+    # time after and before pick for waveform extraction
+    DT = 180
+    
+    # current working directory (directory from where the program is running)
+    CWD = os.getcwd()
+    
+    # fdsn client for waveforms download
+    client = obspy.clients.fdsn.Client(params['fdsn_ip'])
+    
+    # creating data directory
+    dir_maker = DirectoryCreator()
+    main_data_dir = dir_maker.make_dir(CWD, 'mseed_data')
+    ic(main_data_dir)
+    
     # Iterating over the list of stations
     station_list = params['stations'].split(',')
     ic(station_list)
@@ -37,145 +57,82 @@ def picker_tuner(cursor, ti, tf, params):
         # cleaning station_str and getting station codes
         station_str = station_str.strip('\n').strip(' ')
         ic(station_str)
-        net, sta, loc, ch = station_str.split('.')
+        net, sta, loc, ch_ = station_str.split('.')
+        assert len(ch_) == 2,\
+            f"\n\tEl canal {ch_} para la estación {sta} no es válido\n|"
         
+        # creating station directory
+        sta_data_dir = dir_maker.make_dir(main_data_dir, sta)
+
         # searching for station coordinates
-        query = Query(cursor=cursor,
-                      query_type='station_coords',
-                      dic_data={'net': net, 'sta': sta, 'loc': loc})
-        lat, lon = query.execute_query()
+        query_coords = Query(cursor=cursor,
+                             query_type='station_coords',
+                             dic_data={'net': net,
+                                       'sta': sta,
+                                       'loc': loc,
+                                       'ch': ch_})
+        channels, lat, lon = query_coords.execute_query()
 
         # creating a station object
-        station = Station(float(lat), float(lon), net, sta, loc, ch)
+        station = Station(lat, lon, net, sta, loc, ch_)
         ic(station)
         
-        # for each phase
         for phase in ['P', 'S']:
-            pass
-        # search for picks times and download all waveforms
+            # creating phase directory
+            phase_data_dir = dir_maker.make_dir(sta_data_dir, phase)
+            
+            # search for manual picks times
+            query_picks = Query(cursor=cursor,
+                                query_type='picks',
+                                dic_data={'ph': phase,
+                                          'sta': sta, 'net': net,
+                                          'sta_lat': lat, 'sta_lon': lon,
+                                          'ti': ti, 'tf': tf,
+                                          'radius': RADIUS})
+            manual_picks = query_picks.execute_query()
+            ic(len(manual_picks))
+            ic(manual_picks[0])
+            
+            # list with picks objects
+            pick_list = [CreatePick(pick_row, station, phase, DT).create_pick()
+                         for pick_row in manual_picks]
         
-        # Excecutes sta/lta over all wf
-        
-        # Get pick times from XML files
-        
-        # Objective function (compare computed times against downloaded times).
-        # Return score.
-        
-        # Optimizer: Use score obtained in previus step to update
-        # the picker configuration using bayesian optimization
+            # purge repeated picks
+            purged_picks = PurgePicks(pick_list).purge()
+            ic(len(purged_picks))
+            ic(purged_picks[0])
+
+            # for each component
+            for ch in channels:
+                ic(ch)
+                # Download waveforms for each pick
+                for pick in purged_picks:
+                    download = DownloadWaveform(pick, station,
+                                                phase_data_dir,
+                                                client, ch)
+                    ic(download.wf_name)
+                    mseed_chek = download.download()
+                    # if the download failed continue to the next waveform
+                    if not mseed_chek:
+                        continue
+                    
+                    # if the snr is too low and have a lot of peaks continue
+                    # with the next waveform
+                    snr_peaks = PurgeSNR(pick, download).purge_waveform()
+                    if snr_peaks:
+                        continue
+                        
+                # write phase times to file
+                download.write_phase_times()
+                
+                # Excecutes sta/lta over all wf
+            
+                # Get pick times from XML files
+            
+                # Objective function (compare computed times against downloaded times).
+                # Return score.
+            
+                # Optimizer: Use score obtained in previus step to update
+                # the picker configuration using bayesian optimization
 
 
-class Query:
-    """General class for perfom queries to sql seiscomp3 db
-    
-    Atributes
-    ---------
-    query_files : dict
-        Filenames for the slq script to search for pick times or
-        to search for station data.
-    """
-    query_files = {'picks': 'picks_query.sql',
-                   'station_coords': 'coords_query.sql'}
-    
-    def __init__(self, cursor, query_type: str, dic_data: dict):
-        """General class for perfom sql queries
-
-        Parameters
-        ----------
-        cursor : MySQLdb.connect.cursor
-            Cursor pointed to seiscomp3 database
-        query_type : str
-            Could be picks or station
-        dic_data : dict
-            Dictionary with the data to complete the query
-        """
-        self.cursor = cursor
-        self.query_type = query_type
-        self.dic_data = dic_data
-        self.query_dir = os.path.dirname(os.path.realpath(__file__))
-    
-    @property
-    def query_path(self):
-        return os.path.join(self.query_dir, self.query_files[self.query_type])
-    
-    @property
-    def query_str(self):
-        return open(self.query_path).read()
-    
-    @property
-    def query(self):
-        return self.query_str.format(**self.dic_data)
-    
-    def execute_query(self):
-        self.cursor.execute(self.query)
-        if self.query_type == 'picks':
-            return self.cursor.fetchall()
-        elif self.query_type == 'station_coords':
-            return self.cursor.fetchone()
-        else:
-            raise Exception('query_type does not match with picks or station_coords')
-
-
-@dataclass(order=True, frozen=True)
-class Station:
-    lat: float
-    lon: float
-    net: str
-    name: str
-    loc: str
-    ch: str
-
-
-class PicksDownloader:
-    """Search for picks times and download the waveforms
-
-    Atributes
-    ---------
-    format : str
-        Waveform data format
-
-    Methods
-    -------
-    picks_query()
-        Perform sql query to search manual picks
-    get_wf()
-        Download waveforms according to the sql query result
-    """
-    format = 'mseed'
-
-    def __init__(self, cursor, fdsn_client, station: str,
-                 radius: int, phase: str, ti: str, tf: str,
-                 max_picks: int) -> None:
-        """
-        Parameters
-        ----------
-        cursor : MySQLdb database cursor
-            Cursor to SQL database to perform the picks query
-        fdsn_client : obspy.clients.fdsn.Client
-            FDSN client for waveforms downloading
-        station : str
-            Station name in format: net.sta_code.loc_code.ch, like:
-            CM.URMC.00.HH*
-        ti : str
-            Initial time to search for the picks that will be used in the
-            bayesian optimization
-        tf : str
-            Final time to search for thet picks that will be used in the
-            bayesian optimization. Format: yyyy-MM-dd hh:mm:s
-        fdsn_ip : str
-            IP to FDSN for waveforms download
-        max_picks : int
-            Maximun number of picks by station
-        """
-        self.db_ip = db_ip
-        self.station = station
-        self.ti = ti
-        self.tf = tf
-        self.fdsn_ip = fdsn_ip
-        self.max_picks = max_picks
-    
-    def picks_query(self):
-        """Perform SQL query looking for manual pick times
-        """
-        ic(self.station)
-        self.net, self.sta, self.loc, self.ch = self.station.split('.')
