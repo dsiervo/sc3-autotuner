@@ -379,7 +379,7 @@ class WritePhases:
     def phase_file_path(self):
         return os.path.join(self.station.data_dir,
                             self.phases_filename)
-
+1
     def write(self):
         """Write saved phase times in a csv file on phase_file_path directory"""
         with open(self.phase_file_path, 'w') as f:
