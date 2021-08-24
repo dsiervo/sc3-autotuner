@@ -130,3 +130,6 @@ dmypy.json
 
 # waveform data
 mseed_data/
+
+# sc3 data
+sc232data/

@@ -6,7 +6,7 @@ Created on Jun 24 2021
 """
 
 import os
-from download_data import *
+from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
 from icecream import ic, install
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
@@ -37,7 +37,7 @@ def picker_tuner(cursor, ti, tf, params):
     RADIUS = 111*2
     
     # time after and before pick for waveform extraction
-    DT = 180
+    DT = 100
     
     # current working directory (directory from where the program is running)
     CWD = os.getcwd()
@@ -60,9 +60,6 @@ def picker_tuner(cursor, ti, tf, params):
         net, sta, loc, ch_ = station_str.split('.')
         assert len(ch_) == 2,\
             f"\n\tEl canal {ch_} para la estación {sta} no es válido\n|"
-        
-        # creating station directory
-        sta_data_dir = dir_maker.make_dir(main_data_dir, sta)
 
         # searching for station coordinates
         query_coords = Query(cursor=cursor,
@@ -76,63 +73,27 @@ def picker_tuner(cursor, ti, tf, params):
         # creating a station object
         station = Station(lat, lon, net, sta, loc, ch_)
         ic(station)
+        # creating station directory
+        station.data_dir = dir_maker.make_dir(main_data_dir, sta)
         
-        for phase in ['P', 'S']:
-            # creating phase directory
-            phase_data_dir = dir_maker.make_dir(sta_data_dir, phase)
-            
-            # search for manual picks times
-            query_picks = Query(cursor=cursor,
-                                query_type='picks',
-                                dic_data={'ph': phase,
-                                          'sta': sta, 'net': net,
-                                          'sta_lat': lat, 'sta_lon': lon,
-                                          'ti': ti, 'tf': tf,
-                                          'radius': RADIUS})
-            manual_picks = query_picks.execute_query()
-            ic(len(manual_picks))
-            ic(manual_picks[0])
-            
-            # list with picks objects
-            pick_list = [CreatePick(pick_row, station, phase, DT).create_pick()
-                         for pick_row in manual_picks]
-        
-            # purge repeated picks
-            purged_picks = PurgePicks(pick_list).purge()
-            ic(len(purged_picks))
-            ic(purged_picks[0])
+        # search for manual picks times
+        query_picks = Query(cursor=cursor,
+                            query_type='picks',
+                            dic_data={'sta': sta, 'net': net,
+                                      'sta_lat': lat, 'sta_lon': lon,
+                                      'ti': ti, 'tf': tf,
+                                      'radius': RADIUS})
+        manual_picks = query_picks.execute_query()
 
-            # for each component
-            for ch in channels:
-                ic(ch)
-                # Download waveforms for each pick
-                for pick in purged_picks:
-                    download = DownloadWaveform(pick, station,
-                                                phase_data_dir,
-                                                client, ch)
-                    ic(download.wf_name)
-                    mseed_chek = download.download()
-                    # if the download failed continue to the next waveform
-                    if not mseed_chek:
-                        continue
-                    
-                    # if the snr is too low and have a lot of peaks continue
-                    # with the next waveform
-                    snr_peaks = PurgeSNR(pick, download).purge_waveform()
-                    if snr_peaks:
-                        continue
-                        
-                # write phase times to file
-                download.write_phase_times()
-                
-                # Excecutes sta/lta over all wf
-            
-                # Get pick times from XML files
-            
-                # Objective function (compare computed times against downloaded times).
-                # Return score.
-            
-                # Optimizer: Use score obtained in previus step to update
-                # the picker configuration using bayesian optimization
+        waveform_downloader(client, station, manual_picks, DT)
+            # Excecutes sta/lta over all wf
+        
+            # Get pick times from XML files
+        
+            # Objective function (compare computed times against downloaded times).
+            # Return score.
+        
+            # Optimizer: Use score obtained in previus step to update
+            # the picker configuration using bayesian optimization
 
 

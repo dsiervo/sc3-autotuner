@@ -1,14 +1,14 @@
+from matplotlib.pyplot import phase_spectrum
 import numpy as np
-import csv
 import datetime
 from dataclasses import dataclass
 import obspy
 import os
 from obspy.clients.fdsn.header import FDSNException
 import scipy as sc
+import sys
 
-
-@dataclass(order=True, frozen=True)
+@dataclass
 class Station:
     lat: float
     lon: float
@@ -19,10 +19,10 @@ class Station:
 
 
 @dataclass
-class Pick:
+class Waveform:
     t: obspy.UTCDateTime
-    pick_id: str
-    phase: str
+    wf_id: str
+    event_id: str
     ti: obspy.UTCDateTime
     tf: obspy.UTCDateTime
 
@@ -36,21 +36,20 @@ class DirectoryCreator:
 
 
 class DownloadWaveform:
-    pick: Pick
+    pick: Waveform
     station: Station
-    data_dir: str
     client: obspy.clients.fdsn.Client
     ch: str
     
-    phase_times = []
-    
-    def __init__(self, pick, station, data_dir, client, ch):
+    def __init__(self, pick, station, client):
         self.pick = pick
         self.station = station
-        self.data_dir = data_dir
         self.client = client
-        self.ch = ch
     
+    @property
+    def data_dir(self):
+        return self.station.data_dir
+
     @property
     def wf_path(self):
         return os.path.join(self.data_dir,
@@ -58,68 +57,46 @@ class DownloadWaveform:
     
     @property
     def wf_name(self):
-        return self.pick.pick_id+f'_{self.ch}'+'.mseed'
+        return self.pick.wf_id+'.mseed'
     
     @property
     def station_dir(self):
         return os.path.split(self.data_dir)[0]
 
-    @property
-    def phases_filename(self):
-        name = f'{self.station.name}_{self.pick.phase}_'
-        name += f'{self.ch}.txt'
-        return name
-
     def get_wf_stream(self):
         try:
-            return self.client.get_waveforms(network=self.station.net,
-                                             station=self.station.name,
-                                             location=self.station.loc,
-                                             channel=self.station.ch+'*',
-                                             starttime=self.pick.ti,
-                                             endtime=self.pick.tf)
+            self.st = self.client.get_waveforms(network=self.station.net,
+                                                station=self.station.name,
+                                                location=self.station.loc,
+                                                channel=self.station.ch+'*',
+                                                starttime=self.pick.ti,
+                                                endtime=self.pick.tf)
+            return True
         except FDSNException:
             print('\n\n\tNo se encontraron datos')
             print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
             print(f'\t{self.pick.ti} - {self.pick.tf}')
-            return None
+            return False
     
     def trim_and_merge(self):
         self.st.trim(self.pick.ti, self.pick.tf)
         self.st.merge(fill_value="interpolate")
     
-    def write_traces(self):
-        for tr in self.st:
-            tr.write(self.wf_path)
-            # saving phase times in a list of list
-            self.phase_times.append([self.wf_name,
-                                     self.pick.t.strftime("%Y-%m-%dT%H:%M:%S.%f")])
-    
-    def write_phase_times(self):
-        """Write saved phase times in a csv file on station_data_dir directory"""
-        with open(os.path.join(self.station_dir, self.phases_filename), 'w') as f:
-            writer = csv.writer(f)
-            writer.writerows(self.phase_times)
-        
-    def download(self):
+    def mseed_check(self):
         # If the mseed file exists do nothing
         if os.path.exists(self.wf_path):
             ic('waveform already exists')
             return False
         else:
-            self.st = self.get_wf_stream()
-            # If there is not FDSN exception
-            if self.st is not None:
-                self.trim_and_merge()
-                self.write_traces()
-                return True
-            else:
-                return False
+            return True
+
+    def write(self):
+        self.st.write(self.wf_path)
 
 
 class PurgeSNR:
     dw: DownloadWaveform
-    pick: Pick
+    pick: Waveform
     unc: int = 1
     
     def __init__(self, pick, dw):
@@ -181,7 +158,7 @@ class PurgeSNR:
             return False
 
         
-class PurgePicks:
+class PurgeTimes:
     pick_list: list
     
     def __init__(self, pick_list):
@@ -214,16 +191,14 @@ class PurgePicks:
         return pick.ti < pick2.t < pick.tf
 
 
-class CreatePick:
+class CreateWaveform:
     row: list
     station: Station
-    phase: str
     dt: int
     
-    def __init__(self, row, station, phase, dt):
+    def __init__(self, row, station, dt):
         self.row = row
         self.station = station
-        self.phase = phase
         self.dt = dt
 
     @property
@@ -233,8 +208,15 @@ class CreatePick:
                                  milliseconds=float(self.row[-1])/1000))
     
     @property
-    def pick_id(self):
-        return f'{self.phase}__{self.row[0]}-{self.station.name}.{self.station.loc}.{self.station.ch}__{self.row[1]}-{self.row[2]}'
+    def event_id(self):
+        return self.row[0]
+    
+    @property
+    def wf_id(self):
+        wf_id = f'{self.event_id}.{self.station.name}'
+        wf_id += f'.{self.station.loc}.{self.station.ch}'
+        wf_id += f'_{self.pick_time.strftime("%Y%m%dT%H%M%S")}'
+        return wf_id
 
     @property
     def ti(self):
@@ -244,8 +226,8 @@ class CreatePick:
     def tf(self):
         return self.pick_time + self.dt
 
-    def create_pick(self):
-        return Pick(self.pick_time, self.pick_id, self.phase, self.ti, self.tf)
+    def create_wf(self):
+        return Waveform(self.pick_time, self.wf_id, self.event_id, self.ti, self.tf)
 
 
 class Query:
@@ -275,11 +257,14 @@ class Query:
         self.cursor = cursor
         self.query_type = query_type
         self.dic_data = dic_data
-        self.query_dir = os.path.dirname(os.path.realpath(__file__))
+        self.main_dir = os.path.dirname(os.path.realpath(__file__))
     
     @property
     def query_path(self):
-        return os.path.join(self.query_dir, self.query_files[self.query_type])
+        return os.path.join(self.main_dir,
+                            'utils',
+                            'queries',
+                            self.query_files[self.query_type])
     
     @property
     def query_str(self):
@@ -293,7 +278,7 @@ class Query:
         self.cursor.execute(self.query)
         if self.query_type == 'picks':
             # pop(0) deletes the radius column
-            return [list(x)[1:] for x in self.cursor.fetchall()]
+            return [list(x) for x in self.cursor.fetchall()]
         elif self.query_type == 'station_coords':
             ch_and_coords = self.cursor.fetchall()
             # list of available channels for this sensor
@@ -302,3 +287,118 @@ class Query:
             return channels, lat, lon
         else:
             raise Exception('query_type does not match with picks or station_coords')
+
+
+
+
+def waveform_downloader(client, station, manual_picks: list, dt: int):
+
+    ic(manual_picks[0])
+    # keeping with event id and p times in manual_picks
+    p_times = [row[1:5] for row in manual_picks]
+    # keeping with event id and s times in manual_picks
+    s_times = [list(row[1]) + row[5:8] for row in manual_picks]
+    
+    # list with p pick objects
+    wf_list = [CreateWaveform(pick_row, station, dt).create_wf()
+               for pick_row in p_times]
+
+    # purge repeated picks
+    purged_wf = PurgeTimes(wf_list).purge()
+    ic(len(purged_wf))
+    ic(purged_wf[0])
+
+    phase_times = []
+    waveforms = {}
+
+    # Download waveforms for each pick
+    for waveform in purged_wf:
+        download = DownloadWaveform(waveform, station, client)
+        
+        ic(download.wf_name)
+        # checking the mseed file
+        mseed_check = download.mseed_check()
+        # if the mseed already exists continue to the next waveform
+        if not mseed_check:
+            continue
+
+        success = download.get_wf_stream()
+        # checking if there was no FDSNExeption
+        if not success:
+            continue
+        download.trim_and_merge()
+        
+        # if the snr is too low and have a lot of peaks continue
+        # with the next waveform
+        noisy_waveform = PurgeSNR(waveform, download).purge_waveform()
+        if noisy_waveform:
+            continue
+        
+        # writing the mseed file
+        download.write()
+        waveforms[waveform.event_id] = download.wf_name
+        
+
+    # write phase times to file
+    write_picks(p_times, s_times, waveforms, station)
+
+
+@dataclass
+class PickData:
+    row: list
+    wf_name: str
+
+    @property
+    def time(self):
+        return obspy.UTCDateTime(self.row[-2]
+                                 + datetime.timedelta(
+                                 milliseconds=float(self.row[-1])/1000))
+
+    @property
+    def phase_times(self):
+        return [self.wf_name, self.time.strftime("%Y-%m-%dT%H:%M:%S.%f")]
+    
+
+class WritePhases:
+    station: Station
+    phase: str
+    phase_times: list
+
+    def __init__(self, station, phase, phase_times):
+        self.station = station
+        self.phase = phase
+        self.phase_times = phase_times
+    
+    @property
+    def phases_filename(self):
+        name = f'{self.station.name}_{self.phase}_'
+        name += f'{self.station.ch}.txt'
+        return name
+
+    @property
+    def phase_file_path(self):
+        return os.path.join(self.station.data_dir,
+                            self.phases_filename)
+
+    def write(self):
+        """Write saved phase times in a csv file on phase_file_path directory"""
+        with open(self.phase_file_path, 'w') as f:
+            f.write(','.join(self.phase_times))
+
+
+def write_picks(p_picks, s_picks, waveforms, station):
+    picks = {'P': p_picks, 'S': s_picks}
+    for phase in picks:
+        pick_list = picks[phase]
+        ic(pick_list)
+        phase_times = []
+        for row in pick_list:
+            ic(row)
+            try:
+                wf_name = waveforms[row[0]]
+                phase_times.append(PickData(row, wf_name).phase_times)
+            except KeyError:
+                print(f'{row[0]} not found in waveforms')
+                continue
+        
+        WritePhases(station, phase, phase_times).write

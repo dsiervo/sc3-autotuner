@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10" version="0.10">
+  <Config>
+    <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/default" created="2021-07-21T21:30:24.332137Z">
+      <moduleID>Config/trunk</moduleID>
+      <parameter publicID="Parameter/20210721213024.332253.5">
+        <name>detecStream</name>
+        <value>HHN</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.33249.6">
+        <name>detecLocid</name>
+        <value>00</value>
+      </parameter>
+    </parameterSet>
+    <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/pickbayes" created="2021-07-21T21:30:24.332642Z">
+      <baseID>ParameterSet/trunk/Station/CM/BAR2/default</baseID>
+      <moduleID>Config/trunk</moduleID>
+      <parameter publicID="Parameter/20210721213024.332668.8">
+        <name>spicker.AIC.detecFilter</name>
+        <value>STALTA(1,10)</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332692.9">
+        <name>trigOn</name>
+        <value>5</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332715.10">
+        <name>spicker.AIC.minSNR</name>
+        <value>5</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.33273.11">
+        <name>picker.AIC.filter</name>
+        <value>BW(4,2.00,8.00)</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332747.12">
+        <name>picker.AIC.minSNR</name>
+        <value>3</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332761.13">
+        <name>spicker.AIC.filter</name>
+        <value>BW(4,0.3,1.0)</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332774.14">
+        <name>spicker.AIC.step</name>
+        <value>1</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332794.15">
+        <name>timeCorr</name>
+        <value>-0.12</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332807.16">
+        <name>detecFilter</name>
+        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,2.00,8.00)&gt;&gt;STALTA(0.10,5.70)</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332828.17">
+        <name>trigOff</name>
+        <value>1</value>
+      </parameter>
+      <parameter publicID="Parameter/20210721213024.332842.18">
+        <name>spicker.AIC.minCnt</name>
+        <value>3</value>
+      </parameter>
+    </parameterSet>
+    <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/gaps" created="2021-07-21T21:30:24.332912Z">
+      <baseID>ParameterSet/trunk/Station/CM/BAR2/default</baseID>
+      <moduleID>Config/trunk</moduleID>
+      <parameter publicID="Parameter/20210721213024.332927.20">
+        <name>enable</name>
+        <value>true</value>
+      </parameter>
+    </parameterSet>
+    <module publicID="Config/trunk" name="trunk" enabled="true">
+      <station publicID="Config/trunk/CM/BAR2" networkCode="CM" stationCode="PTB" enabled="true">
+        <creationInfo>
+          <agencyID>SGC2</agencyID>
+          <author>bindings2cfg</author>
+          <creationTime>2021-07-21T21:30:24.331726Z</creationTime>
+        </creationInfo>
+        <setup name="default" enabled="true">
+          <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/default</parameterSetID>
+        </setup>
+        <setup name="pickbayes" enabled="true">
+          <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/pickbayes</parameterSetID>
+        </setup>
+        <setup name="gaps" enabled="true">
+          <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/gaps</parameterSetID>
+        </setup>
+      </station>
+    </module>
+  </Config>
+</seiscomp>
