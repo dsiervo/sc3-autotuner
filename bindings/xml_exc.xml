@@ -5,11 +5,11 @@
       <moduleID>Config/trunk</moduleID>
       <parameter publicID="Parameter/20210721213024.332253.5">
         <name>detecStream</name>
-        <value>{ch}</value>
+        <value>HH</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.33249.6">
         <name>detecLocid</name>
-        <value>{loc}</value>
+        <value>00</value>
       </parameter>
     </parameterSet>
     <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/pickbayes" created="2021-07-21T21:30:24.332642Z">
@@ -17,23 +17,23 @@
       <moduleID>Config/trunk</moduleID>
       <parameter publicID="Parameter/20210721213024.332692.9">
         <name>trigOn</name>
-        <value>{trig_on}</value>
+        <value>5</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.33273.11">
         <name>picker.AIC.filter</name>
-        <value>BW(4,{aic_fmin},{aic_fmax})</value>
+        <value>BW(4,2,8)</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332747.12">
         <name>picker.AIC.minSNR</name>
-        <value>{p_snr}</value>
+        <value>3</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332794.15">
         <name>timeCorr</name>
-        <value>{p_timecorr}</value>
+        <value>0.25</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332807.16">
         <name>detecFilter</name>
-        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,{p_fmin},{p_fmax})&gt;&gt;STALTA({p_sta},{p_lta})</value>
+        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,2,8)&gt;&gt;STALTA(0.1,5.7)</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332828.17">
         <name>trigOff</name>
@@ -49,7 +49,7 @@
       </parameter>
     </parameterSet>
     <module publicID="Config/trunk" name="trunk" enabled="true">
-      <station publicID="Config/trunk/CM/BAR2" networkCode="{net}" stationCode="{sta}" enabled="true">
+      <station publicID="Config/trunk/CM/BAR2" networkCode="CM" stationCode="BAR2" enabled="true">
         <creationInfo>
           <agencyID>SGC2</agencyID>
           <author>bindings2cfg</author>
@@ -58,7 +58,7 @@
         <setup name="default" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/default</parameterSetID>
         </setup>
-        <setup name="scautopick" enabled="true">
+        <setup name="pickbayes" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/pickbayes</parameterSetID>
         </setup>
         <setup name="gaps" enabled="true">

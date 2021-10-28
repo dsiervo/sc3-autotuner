@@ -5,6 +5,10 @@
 # Mode to operate, can be picker or associator
 tune_mode = picker
 
+# Debug? If True, will print out debug messages and plots
+# the picks and the waveforms
+debug = False
+
 # IP to server with SQL data base for events query
 db_ip = 10.100.100.232
 
@@ -12,20 +16,26 @@ db_ip = 10.100.100.232
 ti = 2020-10-01 00:00:00
 tf = 2020-12-01 23:59:59
 
+# inventory xml file
+inv_xml = xmldata232/inventory.xml
+
 # =======================================
 # pick_tuner options
 # =======================================
 
 # Pickers of stations/channels to tune
 #stations = CM.BAR2.00.HH, CM.BRJC.00.HH*, CM.PDSC.10.HN*, CM.PAM.20.EH*, CM.RUS.00.HH*,CM.PTB.00.HH*, CM.OCA.00.HH
-#stations = CM.BAR2.20.EH, CM.PDSC.10.HN, CM.GARC.00.HH
-stations = CM.BAR2.00.HH, CM.PTB.00.HH
+stations = CM.BAR2.00.HH
+#stations = CM.BAR2.00.HH, CM.PAM.20.EH, CM.PDSC.10.HN, CM.CUM.20.EH
 
 # IP to FDSN for waveforms download
 fdsn_ip = http://10.100.100.13:8091
 
-# Maximun number of picks by station
-max_picks = 190
+# Maximun number of manual picks by station to use for tuning
+max_picks = 3
+
+# Number of optimization trials to run for each phase for each station
+n_trials = 10
 
 # =======================================
 # assoc_tuner options

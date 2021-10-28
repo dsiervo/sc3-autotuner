@@ -17,14 +17,28 @@ def main():
     """Read parmas, choose in wich modules will be
     tuned, and run it
     """
-    params = read_params()
-    db_ip = params['db_ip']
-    tune_mode = params['tune_mode']
-    ti = params['ti']
-    tf = params['tf']
+    # default parameters
+    params = {'debug': False, 'max_picks': 50, 'n_trials': 100}
     
-    # current working directory
-    cwd = os.getcwd()
+    params_new = read_params()
+    
+    # update params
+    params.update(params_new)
+    
+    params['debug'] = True if params['debug'] in ['true', 'True', 'TRUE'] else False
+    
+    if not params['debug']:
+        ic.disable()
+    else:
+        ic.enable()
+    try:
+        db_ip = params['db_ip']
+        tune_mode = params['tune_mode']
+        ti = params['ti']
+        tf = params['tf']
+    except KeyError:
+        print('\n\n\tERROR! db_ip, tune_mode, ti or tf no defined in sc3-autotuner.inp\n\n')
+        sys.exit()
     
     db = MySQLdb.connect(host=db_ip,
                          user='consulta',

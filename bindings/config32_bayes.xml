@@ -69,7 +69,7 @@
       </parameter>
     </parameterSet>
     <module publicID="Config/trunk" name="trunk" enabled="true">
-      <station publicID="Config/trunk/CM/BAR2" networkCode="CM" stationCode="PTB" enabled="true">
+      <station publicID="Config/trunk/CM/BAR2" networkCode="CM" stationCode="BAR2" enabled="true">
         <creationInfo>
           <agencyID>SGC2</agencyID>
           <author>bindings2cfg</author>
@@ -78,7 +78,7 @@
         <setup name="default" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/default</parameterSetID>
         </setup>
-        <setup name="pickbayes" enabled="true">
+        <setup name="scautopick" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/pickbayes</parameterSetID>
         </setup>
         <setup name="gaps" enabled="true">

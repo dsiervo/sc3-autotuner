@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.11" version="0.11">
   <EventParameters>
-    <pick publicID="20201006.125441.89-CM.PTB.00.HHN">
+    <pick publicID="20201001.012629.74-CM.BAR2.00.HHZ">
       <time>
-        <value>2020-10-06T12:54:41.898394Z</value>
+        <value>2020-10-01T01:26:29.748394Z</value>
       </time>
-      <waveformID networkCode="CM" stationCode="PTB" locationCode="00" channelCode="HHN"/>
+      <waveformID networkCode="CM" stationCode="BAR2" locationCode="00" channelCode="HHZ"/>
       <filterID>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,2.00,8.00)&gt;&gt;STALTA(0.10,5.70)</filterID>
       <methodID>Trigger</methodID>
       <phaseHint>P</phaseHint>
@@ -13,85 +13,85 @@
       <creationInfo>
         <agencyID>SGC</agencyID>
         <author>bdrsn</author>
-        <creationTime>2021-07-21T21:42:04.175682Z</creationTime>
+        <creationTime>2021-09-30T15:12:25.964148Z</creationTime>
       </creationInfo>
     </pick>
-    <amplitude publicID="20201006.125441.89-CM.PTB.00.HHN.snr">
+    <pick publicID="20201001.012645.33-S-AIC-CM.BAR2.00.HHN">
+      <time>
+        <value>2020-10-01T01:26:45.338394Z</value>
+      </time>
+      <waveformID networkCode="CM" stationCode="BAR2" locationCode="00" channelCode="HHN"/>
+      <filterID>BW(4,2,8)</filterID>
+      <methodID>L2-AIC-GRID</methodID>
+      <phaseHint>S</phaseHint>
+      <evaluationMode>automatic</evaluationMode>
+      <creationInfo>
+        <agencyID>SGC</agencyID>
+        <author>bdrsn</author>
+        <creationTime>2021-09-30T15:12:25.973081Z</creationTime>
+      </creationInfo>
+      <comment>
+        <text>20201001.012629.74-CM.BAR2.00.HHZ</text>
+        <id>RefPickID</id>
+      </comment>
+    </pick>
+    <amplitude publicID="20201001.012629.74-CM.BAR2.00.HHZ.snr">
       <type>snr</type>
       <amplitude>
-        <value>7.167694015</value>
+        <value>29.80432159</value>
       </amplitude>
       <timeWindow>
-        <reference>2020-10-06T12:54:42.048393Z</reference>
-        <begin>-0.03</begin>
-        <end>9.97</end>
+        <reference>2020-10-01T01:26:30.018393Z</reference>
+        <begin>-0.15</begin>
+        <end>9.85</end>
       </timeWindow>
-      <pickID>20201006.125441.89-CM.PTB.00.HHN</pickID>
-      <waveformID networkCode="CM" stationCode="PTB" locationCode="00" channelCode="HHN"/>
+      <pickID>20201001.012629.74-CM.BAR2.00.HHZ</pickID>
+      <waveformID networkCode="CM" stationCode="BAR2" locationCode="00" channelCode="HHZ"/>
       <creationInfo>
         <agencyID>SGC</agencyID>
         <author>bdrsn</author>
-        <creationTime>2021-07-21T21:42:04.177241Z</creationTime>
+        <creationTime>2021-09-30T15:12:25.978158Z</creationTime>
       </creationInfo>
     </amplitude>
-    <amplitude publicID="20201006.125441.89-CM.PTB.00.HHN.mb">
+    <amplitude publicID="20201001.012629.74-CM.BAR2.00.HHZ.mb">
       <type>mb</type>
       <amplitude>
-        <value>10.20376899</value>
+        <value>82.68180153</value>
       </amplitude>
       <timeWindow>
-        <reference>2020-10-06T12:54:46.458393Z</reference>
-        <begin>-9.56</begin>
-        <end>25.44</end>
+        <reference>2020-10-01T01:26:46.828393Z</reference>
+        <begin>-22.08</begin>
+        <end>12.92</end>
       </timeWindow>
       <period>
-        <value>0.5125</value>
+        <value>0.3125</value>
       </period>
-      <snr>4.024370066</snr>
-      <pickID>20201006.125441.89-CM.PTB.00.HHN</pickID>
-      <waveformID networkCode="CM" stationCode="PTB" locationCode="00" channelCode="HHN"/>
+      <snr>16.64857298</snr>
+      <pickID>20201001.012629.74-CM.BAR2.00.HHZ</pickID>
+      <waveformID networkCode="CM" stationCode="BAR2" locationCode="00" channelCode="HHZ"/>
       <creationInfo>
         <agencyID>SGC</agencyID>
         <author>bdrsn</author>
-        <creationTime>2021-07-21T21:42:04.185955Z</creationTime>
+        <creationTime>2021-09-30T15:12:25.983295Z</creationTime>
       </creationInfo>
     </amplitude>
-    <amplitude publicID="20201006.125441.89-CM.PTB.00.HHN.mB">
+    <amplitude publicID="20201001.012629.74-CM.BAR2.00.HHZ.mB">
       <type>mB</type>
       <amplitude>
-        <value>1084.795442</value>
+        <value>6625.661454</value>
       </amplitude>
       <timeWindow>
-        <reference>2020-10-06T12:55:40.598393Z</reference>
-        <begin>-63.7</begin>
-        <end>1.3</end>
+        <reference>2020-10-01T01:26:30.098393Z</reference>
+        <begin>-5.35</begin>
+        <end>59.65</end>
       </timeWindow>
-      <snr>3.855633872</snr>
-      <pickID>20201006.125441.89-CM.PTB.00.HHN</pickID>
-      <waveformID networkCode="CM" stationCode="PTB" locationCode="00" channelCode="HHN"/>
+      <snr>14.42562984</snr>
+      <pickID>20201001.012629.74-CM.BAR2.00.HHZ</pickID>
+      <waveformID networkCode="CM" stationCode="BAR2" locationCode="00" channelCode="HHZ"/>
       <creationInfo>
         <agencyID>SGC</agencyID>
         <author>bdrsn</author>
-        <creationTime>2021-07-21T21:42:04.189922Z</creationTime>
-      </creationInfo>
-    </amplitude>
-    <amplitude publicID="20201006.125441.89-CM.PTB.00.HHN.MLv">
-      <type>MLv</type>
-      <amplitude>
-        <value>0.06466237821</value>
-      </amplitude>
-      <timeWindow>
-        <reference>2020-10-06T12:54:46.348393Z</reference>
-        <begin>-9.45</begin>
-        <end>145.55</end>
-      </timeWindow>
-      <snr>4.793043631</snr>
-      <pickID>20201006.125441.89-CM.PTB.00.HHN</pickID>
-      <waveformID networkCode="CM" stationCode="PTB" locationCode="00" channelCode="HHN"/>
-      <creationInfo>
-        <agencyID>SGC</agencyID>
-        <author>bdrsn</author>
-        <creationTime>2021-07-21T21:42:04.195384Z</creationTime>
+        <creationTime>2021-09-30T15:12:25.98732Z</creationTime>
       </creationInfo>
     </amplitude>
   </EventParameters>

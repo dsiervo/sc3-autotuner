@@ -6,7 +6,9 @@ import obspy
 import os
 from obspy.clients.fdsn.header import FDSNException
 import scipy as sc
+import csv
 import sys
+
 
 @dataclass
 class Station:
@@ -82,26 +84,27 @@ class DownloadWaveform:
         self.st.trim(self.pick.ti, self.pick.tf)
         self.st.merge(fill_value="interpolate")
     
-    def mseed_check(self):
+    def mseed_exists(self):
         # If the mseed file exists do nothing
         if os.path.exists(self.wf_path):
             ic('waveform already exists')
-            return False
-        else:
             return True
+        else:
+            return False
 
     def write(self):
         self.st.write(self.wf_path)
 
+    def load_stream(self):
+        self.st = obspy.read(self.wf_path)
+
 
 class PurgeSNR:
     dw: DownloadWaveform
-    pick: Waveform
     unc: int = 1
     
-    def __init__(self, pick, dw):
+    def __init__(self, dw):
         self.dw = dw
-        self.pick = pick
     
     @property
     def t(self):
@@ -148,7 +151,6 @@ class PurgeSNR:
         
         snr = np.mean(abs(signal)) / np.mean(abs(noise))
         peaks, _ = sc.signal.find_peaks(tr.data, height=0.6)
-        ic(snr, len(peaks),  snr < 1.5 and len(peaks) > 9)
         
         # if the signal is too noisy, and have many peaks,
         # do not keep the waveform
@@ -169,7 +171,7 @@ class PurgeTimes:
     def purge(self):
         purged_pick_list = []
         for i, pick in enumerate(self.pick_list):
-            pick
+            ic(pick.t)
             # if is the first pick
             if i == 0:
                 self.purge_after = self.compare_times(pick, self.pick_list[1])
@@ -177,7 +179,7 @@ class PurgeTimes:
             elif i == len(self.pick_list)-1:
                 self.purge_before = self.compare_times(pick, self.pick_list[i-1])
             else:
-                self.purge_after = self.compare_times(pick, self.pick_list[1])
+                self.purge_after = self.compare_times(pick, self.pick_list[i+1])
                 self.purge_before = self.compare_times(pick, self.pick_list[i-1])
 
             if self.purge_before or self.purge_after:
@@ -289,64 +291,61 @@ class Query:
             raise Exception('query_type does not match with picks or station_coords')
 
 
-
-
 def waveform_downloader(client, station, manual_picks: list, dt: int):
 
-    ic(manual_picks[0])
+    ic(len(manual_picks))
     # keeping with event id and p times in manual_picks
     p_times = [row[1:5] for row in manual_picks]
     # keeping with event id and s times in manual_picks
-    s_times = [list(row[1]) + row[5:8] for row in manual_picks]
+    s_times = [[row[1]] + row[5:8] for row in manual_picks]
     
-    # list with p pick objects
+    # list with p pick objects because we need download only one waveform
     wf_list = [CreateWaveform(pick_row, station, dt).create_wf()
                for pick_row in p_times]
 
     # purge repeated picks
     purged_wf = PurgeTimes(wf_list).purge()
     ic(len(purged_wf))
-    ic(purged_wf[0])
 
-    phase_times = []
     waveforms = {}
 
     # Download waveforms for each pick
     for waveform in purged_wf:
         download = DownloadWaveform(waveform, station, client)
-        
-        ic(download.wf_name)
-        # checking the mseed file
-        mseed_check = download.mseed_check()
+        # checking if the mseed exist
+        mseed_exists = download.mseed_exists()
         # if the mseed already exists continue to the next waveform
-        if not mseed_check:
+        if ic(mseed_exists):
+            download.load_stream()
+            waveforms[waveform.event_id] = download
             continue
 
         success = download.get_wf_stream()
         # checking if there was no FDSNExeption
-        if not success:
+        if ic(not success):
             continue
         download.trim_and_merge()
         
         # if the snr is too low and have a lot of peaks continue
         # with the next waveform
-        noisy_waveform = PurgeSNR(waveform, download).purge_waveform()
-        if noisy_waveform:
+        noisy_waveform = PurgeSNR(download).purge_waveform()
+        if ic(noisy_waveform):
             continue
         
+        ic(download.wf_path)
+        waveforms[waveform.event_id] = download
         # writing the mseed file
         download.write()
-        waveforms[waveform.event_id] = download.wf_name
         
-
-    # write phase times to file
-    write_picks(p_times, s_times, waveforms, station)
+    # write phase times on file and return the paths to times file
+    return write_picks(p_times, s_times, waveforms, station)
 
 
 @dataclass
 class PickData:
     row: list
     wf_name: str
+    waveform: DownloadWaveform
 
     @property
     def time(self):
@@ -356,7 +355,10 @@ class PickData:
 
     @property
     def phase_times(self):
-        return [self.wf_name, self.time.strftime("%Y-%m-%dT%H:%M:%S.%f")]
+        return [self.wf_name, self.time.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                self.waveform.pick.ti.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                self.waveform.st[0].stats.sampling_rate,
+                self.waveform.st[0].stats.npts]
     
 
 class WritePhases:
@@ -379,26 +381,34 @@ class WritePhases:
     def phase_file_path(self):
         return os.path.join(self.station.data_dir,
                             self.phases_filename)
-1
+
     def write(self):
         """Write saved phase times in a csv file on phase_file_path directory"""
-        with open(self.phase_file_path, 'w') as f:
-            f.write(','.join(self.phase_times))
+        with open(self.phase_file_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(self.phase_times)
 
 
 def write_picks(p_picks, s_picks, waveforms, station):
+    if not waveforms:
+        print(f'No waveforms downloaded for {station.name} due lack of good picks')
+        sys.exit(0)
+    # write pick times in a csv file
     picks = {'P': p_picks, 'S': s_picks}
-    for phase in picks:
-        pick_list = picks[phase]
-        ic(pick_list)
+    times_paths = {}
+    for phase, pick_list in picks.items():
         phase_times = []
         for row in pick_list:
-            ic(row)
             try:
-                wf_name = waveforms[row[0]]
-                phase_times.append(PickData(row, wf_name).phase_times)
+                current_wf = waveforms[row[0]]
+                wf_name = current_wf.wf_path
+                phase_times.append(PickData(row,
+                                            wf_name,
+                                            current_wf).phase_times)
             except KeyError:
                 print(f'{row[0]} not found in waveforms')
                 continue
-        
-        WritePhases(station, phase, phase_times).write
+        wr_ph = WritePhases(station, phase, phase_times)
+        wr_ph.write()
+        times_paths[phase] = wr_ph.phase_file_path
+    return times_paths

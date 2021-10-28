@@ -133,3 +133,11 @@ mseed_data/
 
 # sc3 data
 sc232data/
+
+# cache files
+current_exc.txt
+exc_BAR2_P.xml
+images/
+merged_picks.xml
+picks_xml/
+
