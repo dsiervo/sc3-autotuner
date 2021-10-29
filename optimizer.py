@@ -10,6 +10,7 @@ import plotly
 #from sc3autotuner import read_params
 from sklearn.metrics import precision_score, recall_score, roc_auc_score, fbeta_score
 from stalta import StaLta
+import os
 
 
 def objetive_p(trial, metric='f1'):
@@ -23,14 +24,14 @@ def objetive_p(trial, metric='f1'):
                }
     
     space = {
-        'p_sta': trial.suggest_uniform('sta', 0.1, 3),
+        'p_sta': trial.suggest_uniform('p_sta', 0.1, 3),
         'p_sta_width': trial.suggest_loguniform('p_sta_width', 1, 100),
         'p_fmin': trial.suggest_int('f_min', 1, 10),
         'p_fwidth': trial.suggest_int('f_width', 1, 10),
         'p_timecorr': trial.suggest_uniform('p_timecorr', 0, 1),
         'p_snr': trial.suggest_int('p_snr', 1, 4),
         'aic_fmin': trial.suggest_int('aic_fmin', 1, 10),
-        'aic_fwidth': trial.suggest_int('aic_fmax', 1, 10),
+        'aic_fwidth': trial.suggest_int('aic_fwidth', 1, 10),
         'trig_on': trial.suggest_uniform('trig_on', 2, 15)
            }
 
@@ -63,18 +64,17 @@ def bayes_optuna(net, sta, loc, phase, n_trials=1000):
     study.optimize(objective_func['P'], n_trials=n_trials)
 
     fig_hist = optuna.visualization.plot_optimization_history(study)
-    fig_cont = optuna.visualization.plot_contour(study,
-                                                 params=['sta', 'p_sta_width'])
+    #fig_cont = optuna.visualization.plot_contour(study,
+    #                                             params=['p_sta', 'p_sta_width'])
     fig_slice = optuna.visualization.plot_slice(study,
-                                                params=['sta', 'p_sta_width',
+                                                params=['p_sta', 'p_sta_width',
                                                         'f_min', 'f_width',
                                                         'trig_on'])
-    fig_parall = optuna.visualization.plot_parallel_coordinate(study,
-                                                               params=['sta',
-                                                                       'p_sta_width',
-                                                                       'f_min',
-                                                                       'f_width',
-                                                                       'trig_on'])
+    fig_parall = optuna.visualization\
+                 .plot_parallel_coordinate(study,
+                                           params=['p_sta', 'p_sta_width',
+                                                   'f_min', 'f_width',
+                                                   'trig_on'])
 
     print('Number of finished trials: {}'.format(len(study.trials)))
 
@@ -90,11 +90,16 @@ def bayes_optuna(net, sta, loc, phase, n_trials=1000):
     best = trial.params
     best.update({'best loss': trial.value})
     
-    #cfg_par = save_results(best)
-    
-    #station = cfg_par['station']
-    #phase = cfg_par['phase']
-    #ch = cfg_par['ch']
+    # write best params to .csv file
+    # if the file already exists, append the new line
+    # else create a new file
+    results_file = 'results.csv'
+    if not os.path.exists(results_file):
+        with open(results_file, 'w') as f:
+            f.write('net.sta,p_sta,p_sta_width,f_min,f_width,trig_on,best_loss\n')
+    with open(results_file, 'a') as f:
+        f.write(f'{net}.{sta},{best["p_sta"]},{best["p_sta_width"]},{best["f_min"]},{best["f_width"]},{best["trig_on"]},{best["best loss"]}\n')
+
 
     fig_hist.update_layout(font=dict(size=24))
 
@@ -106,9 +111,9 @@ def bayes_optuna(net, sta, loc, phase, n_trials=1000):
     plotly.offline.plot(fig_hist,
                         filename=f"images/history_{net}.{sta}.{loc}_{phase}.html",
                         auto_open=False)
-    plotly.offline.plot(fig_cont,
-                        filename=f"images/contour_{net}.{sta}.{loc}_{phase}.html",
-                        auto_open=False)
+    #plotly.offline.plot(fig_cont,
+    #                    filename=f"images/contour_{net}.{sta}.{loc}_{phase}.html",
+    #                    auto_open=False)
     plotly.offline.plot(fig_parall,
                         filename=f"images/parallel_coord_{net}.{sta}.{loc}_{phase}.html",
                         auto_open=False)

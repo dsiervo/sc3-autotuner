@@ -84,6 +84,10 @@ class StaLta:
         
         Y_obs = np.concatenate(Y_obs_)
         Y_pred = np.concatenate(Y_pred_)
+        
+        # plot if debug is true
+        if self.debug:
+            self.test_binary_times(Y_obs, Y_pred)
         return Y_obs, Y_pred
 
     def exc_read_transform(self, line):
@@ -109,7 +113,7 @@ class StaLta:
                                      self.npts,
                                      self.ph_time).transform()
         if self.debug:
-            self.test_binary_times()
+            self.test_binary_time()
 
     def time2sample(self, time: UTCDateTime):
         """
@@ -117,7 +121,16 @@ class StaLta:
         """
         return int((time - self.wf_start_time) * self.sample_rate)
 
-    def test_binary_times(self):
+    def test_binary_times(self, y_obs, y_pred):
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.plot(y_obs, label='Y_obs')
+        plt.plot(y_pred, "--r", label='Y_pred')
+        plt.legend()
+        plt.show()
+        
+
+    def test_binary_time(self):
         import obspy as obs
         import matplotlib.pyplot as plt
         
