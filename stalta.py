@@ -13,6 +13,7 @@ import pandas_read_xml as pdx
 import pandas as pd
 from obspy.core import UTCDateTime
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 
@@ -22,11 +23,22 @@ class StaLta:
     picks_dir: str
     inv_xml: str
     _debug: bool
+    best_p_csv = 'results_P.csv'
     
     main_dir: str = os.path.dirname(os.path.realpath(__file__))
     
     def __init__(self):
         self.__dict__.update(self._current_exc_params)
+    
+    @property
+    def best_p_params(self):
+        """
+        Get the best p parameters
+        """
+        df = pd.read_csv(self.best_p_csv)
+        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_loss
+        p_best = df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_loss', ascending=False).iloc[0].to_dict()
+        return p_best
     
     @property
     def _current_exc_params(self):
@@ -57,7 +69,7 @@ class StaLta:
 
     @property
     def phase(self):
-        return self.times_file.split('_')[-2]
+        return ic(self.times_file_name.split('_')[-2])
     
     @property
     def lines(self):
@@ -67,6 +79,16 @@ class StaLta:
     def N(self):
         return len(self.lines)
     
+    @property
+    def max_workers(self):
+        """
+        Get the maximum number of workers if debug is false
+        """
+        if self.debug:
+            return 1
+        else:
+            return int(os.cpu_count() * 0.75)
+
     def mega_sta_lta(self, **kwargs):
         """
         Compute sta/lta for all lines in the file
@@ -75,15 +97,21 @@ class StaLta:
         self.remove_picks_dir()
         self.edit_xml_config(**kwargs)
         
-        Y_obs_ = []
-        Y_pred_ = []
-        for line in self.lines:
+        Y_obs = []
+        Y_pred = []
+        """for line in self.lines:
             self.exc_read_transform(line)
             Y_obs_.append(self.y_obs)
             Y_pred_.append(self.y_pred)
         
         Y_obs = np.concatenate(Y_obs_)
-        Y_pred = np.concatenate(Y_pred_)
+        Y_pred = np.concatenate(Y_pred_)"""
+        
+        # execute scautopick in parallel and saving the results in Y_obs and Y_pred
+        with ProcessPoolExecutor(max_workers=self.max_workers) as excecutor:
+            for y_obs, y_pred in excecutor.map(self.exc_read_transform, self.lines):
+                Y_obs.append(y_obs)
+                Y_pred.append(y_pred)
         
         # plot if debug is true
         if self.debug:
@@ -94,7 +122,7 @@ class StaLta:
         self.sta_lta_compute(line)
         try:
             # get pick times
-            self.pick_times = XMLPicks(self.pick_path).get_pick_times()
+            self.pick_times = XMLPicks(self.pick_path, self.phase).get_pick_times()
         except TypeError:
             ic()
             # if no pick is found, set pick times to empty list
@@ -104,16 +132,18 @@ class StaLta:
             self.pick_times = []
             
         # transform predicted times into a binary time series
-        self.y_pred = BinaryTransform(self.wf_start_time,
+        y_pred = BinaryTransform(self.wf_start_time,
                                       self.sample_rate,
                                       self.npts,
                                       self.pick_times).transform()
-        self.y_obs = BinaryTransform(self.wf_start_time,
+        y_obs = BinaryTransform(self.wf_start_time,
                                      self.sample_rate,
                                      self.npts,
                                      self.ph_time).transform()
         if self.debug:
             self.test_binary_time()
+        
+        return y_obs, y_pred
 
     def time2sample(self, time: UTCDateTime):
         """
@@ -129,7 +159,6 @@ class StaLta:
         plt.legend()
         plt.show()
         
-
     def test_binary_time(self):
         import obspy as obs
         import matplotlib.pyplot as plt
@@ -190,6 +219,10 @@ class StaLta:
             kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
         else:
             xml_filename = 'config_template.xml'
+            kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
+            kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
+            kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
+            kwargs['s_fmax'] = kwargs['s_fmin'] + kwargs['s_fwidth']
     
         ic(xml_filename)
         # xml path for the template
@@ -230,8 +263,9 @@ class XMLPicks:
     xml_path: str
     ns: dict = {'seiscomp': 'http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.11'}
     
-    def __init__(self, xml_path: str):
+    def __init__(self, xml_path: str, phase: str):
         self.xml_path = xml_path
+        self.phase = phase
     
     def open_dict_time(self, x):
         return x['value']
@@ -243,9 +277,10 @@ class XMLPicks:
         times = []
         root = ET.parse(self.xml_path).getroot()
         for pick in root.findall('seiscomp:EventParameters/seiscomp:pick', self.ns):
-            time = pick.find('seiscomp:time/seiscomp:value', self.ns).text
-            print(time)
-            times.append(obspy.UTCDateTime(time))
+            if self.phase == pick.find('seiscomp:phaseHint', self.ns).text:
+                time = pick.find('seiscomp:time/seiscomp:value', self.ns).text
+                ic(time)
+                times.append(obspy.UTCDateTime(time))
         return times
 
     """def get_pick_times(self):

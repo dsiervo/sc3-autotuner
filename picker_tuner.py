@@ -117,36 +117,32 @@ def picker_tuner(cursor, ti, tf, params):
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()
 
+        print(f'\n\n\033[95m Descargando formas de onda {net}.{sta}.{ch_}\033[0m\n')
         times_paths = waveform_downloader(client, station, manual_picks, DT)
         # Excecutes sta/lta over all wf
         # creating xml picks directory
         picks_dir = dir_maker.make_dir(CWD, 'picks_xml')
         image_dir = dir_maker.make_dir(CWD, 'images')
-        write_current_exc(times_paths, picks_dir, inv_xml, debug,
-                          net, ch_, loc, sta)
         
-        # for phase in ['P', 'S']:
-        phase = 'P'
-        bayes_optuna(net, sta, loc, phase, n_trials)
+        print(f'\n\n\033[95m Optimizando pickers\033[0m\n')
+        for phase in ['P', 'S']:
+            write_current_exc(times_paths[phase], picks_dir, inv_xml, debug,
+                              net, ch_, loc, sta)
+            ic(phase)
+            bayes_optuna(net, sta, loc, phase, n_trials)
     
-        # Objective function (compare computed times against downloaded times).
-        # Return L2 score for all picks.
-        
-    
-        # Optimizer: Use score obtained in previus step to update
-        # the picker configuration using bayesian optimization
 
 def write_current_exc(times_paths, picks_dir, inv_xml, debug,
                       net, ch, loc, sta):
     """function that writes in a file called current_exc.txt
-    the values of times_paths['P'], picks_dir, inv_xml, and debug
+    the values of times_paths, picks_dir, inv_xml, and debug
     times_file: str
     picks_dir: str
     inv_xml: str
     debug: bool
     """
     f = open('current_exc.txt', 'w')
-    f.write(f"times_file = {times_paths['P']}\n")
+    f.write(f"times_file = {times_paths}\n")
     f.write(f"picks_dir = {picks_dir}\n")
     f.write(f"inv_xml = {inv_xml}\n")
     f.write(f"_debug = {debug}\n")
