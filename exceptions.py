@@ -1,2 +1,0 @@
-class BreakingLoop(Exception):
-    pass
