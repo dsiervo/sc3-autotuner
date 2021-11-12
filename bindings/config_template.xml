@@ -51,6 +51,10 @@
         <name>spicker.AIC.minCnt</name>
         <value>3</value>
       </parameter>
+      <parameter publicID="Parameter/20210721213024.332842.19">
+        <name>spicker.AIC.minSNR</name>
+        <value>{s_snr}</value>
+      </parameter>
     </parameterSet>
     <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/gaps" created="2021-07-21T21:30:24.332912Z">
       <baseID>ParameterSet/trunk/Station/CM/BAR2/default</baseID>
@@ -70,7 +74,7 @@
         <setup name="default" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/default</parameterSetID>
         </setup>
-        <setup name="pickbayes" enabled="true">
+        <setup name="scautopick" enabled="true">
           <parameterSetID>ParameterSet/trunk/Station/CM/BAR2/pickbayes</parameterSetID>
         </setup>
         <setup name="gaps" enabled="true">

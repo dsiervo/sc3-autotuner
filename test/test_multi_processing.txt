@@ -1,0 +1,20 @@
+1 core
+stations = CM.BAR2.00.HH
+# Maximun number of manual picks by station to use for tuning
+max_picks = 5
+# Number of optimization trials to run for each phase for each station
+n_trials = 5
+
+real	1m59.031s
+user	1m53.940s
+sys	0m7.894s
+
+0.75% all cores
+real	0m34.573s
+user	1m47.170s
+sys	0m11.759s
+
+All cores
+real	0m34.417s
+user	1m49.082s
+sys	0m12.409s
