@@ -26,16 +26,16 @@ inv_xml = xmldata232/inventory.xml
 # Pickers of stations/channels to tune
 #stations = CM.BAR2.00.HH, CM.BRJC.00.HH*, CM.PDSC.10.HN*, CM.PAM.20.EH*, CM.RUS.00.HH*,CM.PTB.00.HH*, CM.OCA.00.HH
 stations = CM.BAR2.00.HH, CM.PDSC.10.HN, CM.PAM.20.EH
-#stations = CM.BAR2.00.HH, CM.PAM.20.EH, CM.PDSC.10.HN, CM.CUM.20.EH
+#stations = CM.BAR2.00.HH
 
 # IP to FDSN for waveforms download
 fdsn_ip = http://10.100.100.13:8091
 
 # Maximun number of manual picks by station to use for tuning
-max_picks = 10
+max_picks = 15
 
 # Number of optimization trials to run for each phase for each station
-n_trials = 10
+n_trials = 50
 
 # =======================================
 # assoc_tuner options

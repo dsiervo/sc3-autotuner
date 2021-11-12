@@ -87,7 +87,7 @@ class StaLta:
         if self.debug:
             return 1
         else:
-            return int(os.cpu_count() * 0.75)
+            return int(os.cpu_count() * 1)
 
     def mega_sta_lta(self, **kwargs):
         """
@@ -97,8 +97,8 @@ class StaLta:
         self.remove_picks_dir()
         self.edit_xml_config(**kwargs)
         
-        Y_obs = []
-        Y_pred = []
+        Y_obs_ = []
+        Y_pred_ = []
         """for line in self.lines:
             self.exc_read_transform(line)
             Y_obs_.append(self.y_obs)
@@ -107,12 +107,20 @@ class StaLta:
         Y_obs = np.concatenate(Y_obs_)
         Y_pred = np.concatenate(Y_pred_)"""
         
+        # self.max_workers
         # execute scautopick in parallel and saving the results in Y_obs and Y_pred
         with ProcessPoolExecutor(max_workers=self.max_workers) as excecutor:
             for y_obs, y_pred in excecutor.map(self.exc_read_transform, self.lines):
-                Y_obs.append(y_obs)
-                Y_pred.append(y_pred)
-        
+                Y_obs_.append(y_obs)
+                Y_pred_.append(y_pred)
+
+        Y_obs = np.concatenate(Y_obs_)
+        Y_pred = np.concatenate(Y_pred_)
+                                
+        ic(Y_obs)
+        ic(Y_pred)
+        ic(np.unique(Y_obs))
+        ic(np.unique(Y_pred))
         # plot if debug is true
         if self.debug:
             self.test_binary_times(Y_obs, Y_pred)
@@ -141,7 +149,7 @@ class StaLta:
                                      self.npts,
                                      self.ph_time).transform()
         if self.debug:
-            self.test_binary_time()
+            self.test_binary_time(y_pred)
         
         return y_obs, y_pred
 
@@ -159,7 +167,7 @@ class StaLta:
         plt.legend()
         plt.show()
         
-    def test_binary_time(self):
+    def test_binary_time(self, y_pred):
         import obspy as obs
         import matplotlib.pyplot as plt
         
@@ -178,7 +186,7 @@ class StaLta:
         plt.xticks([])
         plt.ylabel('Amplitude')
         plt.subplot(212)
-        plt.plot(self.y_pred)
+        plt.plot(y_pred)
         plt.show()
 
     def remove_picks_dir(self):
