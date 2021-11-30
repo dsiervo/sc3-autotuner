@@ -11,6 +11,7 @@ import plotly
 #from sc3autotuner import read_params
 from sklearn.metrics import precision_score, recall_score, roc_auc_score, fbeta_score
 from stalta import StaLta
+import pandas as pd
 import os
 
 
@@ -90,7 +91,7 @@ def objective_s(trial, metric='f1'):
     return score
 
 
-def bayes_optuna(net, sta, loc, phase, n_trials=1000):
+def bayes_optuna(net, sta, loc, ch, phase, n_trials=1000):
 
     objective_func = {'P': objetive_p, 'S': objective_s}
     
@@ -99,70 +100,11 @@ def bayes_optuna(net, sta, loc, phase, n_trials=1000):
     
     study = optuna.create_study(direction='maximize') #, pruner=optuna.pruners.MedianPruner()
     study.optimize(objective_func[phase], n_trials=n_trials)
-    plot_and_write(net, sta, loc, phase, study)
-
-
-def plot_and_write(net, sta, loc, phase, study):
-    fig_hist = optuna.visualization.plot_optimization_history(study)
-    params = {'P': ['p_sta', 'p_sta_width', 'p_fmin', 'p_fwidth', 'trig_on'],
-              'S': ['s_fmin', 's_fwidth', 's_snr']}
     
-    #fig_cont = optuna.visualization.plot_contour(study,
-    #                                             params=['p_sta', 'p_sta_width'])
-    fig_slice = optuna.visualization.plot_slice(study,
-                                                params=params[phase])
-    fig_parall = optuna.visualization\
-                 .plot_parallel_coordinate(study,
-                                           params=params[phase])
+    # plotting and writing results in csv file and in config file
+    plot_and_write = PlotWrite(net, sta, loc, ch, phase, study)
+    plot_and_write.plot_and_write()
 
-    print(f'\n\n\033[92m{net}.{sta} - {phase}\033[0m')
-    print('Number of finished trials: {}'.format(len(study.trials)))
-
-    print('Best trial:')
-    trial = study.best_trial
-
-    print('  Value: {}'.format(trial.value))
-
-    print('  Params: ')
-    for key, value in trial.params.items():
-        print('    {}: {}'.format(key, value))
-    
-    best = trial.params
-    best.update({'best_loss': trial.value})
-    
-    # write best params to .csv file
-    # if the file already exists, append the new line
-    # else create a new file
-    write_best_csv(best, net, sta, phase)
-
-    fig_hist.update_layout(font=dict(size=24))
-
-    fig_slice.update_layout(font=dict(size=22))
-
-    plotly.offline.plot(fig_slice,
-                        filename=f"images/slice_{net}.{sta}.{loc}_{phase}.html",
-                        auto_open=False)
-    plotly.offline.plot(fig_hist,
-                        filename=f"images/history_{net}.{sta}.{loc}_{phase}.html",
-                        auto_open=False)
-    #plotly.offline.plot(fig_cont,
-    #                    filename=f"images/contour_{net}.{sta}.{loc}_{phase}.html",
-    #                    auto_open=False)
-    plotly.offline.plot(fig_parall,
-                        filename=f"images/parallel_coord_{net}.{sta}.{loc}_{phase}.html",
-                        auto_open=False)
-
-
-def write_best_csv(best_params, net, sta, phase):
-    """Write best params to .csv file"""
-    csv_data = CSVData(phase, best_params, net, sta)
-    
-    results_file = f'results_{phase}.csv'
-    if not os.path.exists(results_file):
-        with open(results_file, 'w') as f:
-            f.write(csv_data.header)
-    with open(results_file, 'a') as f:
-        f.write(csv_data.values)
 
 @dataclass
 class CSVData:
@@ -192,5 +134,151 @@ class CSVData:
             return line
         elif self.phase == 'S':
             return f'{self.net}.{self.sta},{self.best_params["s_fmin"]},{self.best_params["s_fwidth"]},{self.best_params["s_snr"]},{self.best_params["best_loss"]}\n'
+
+
+class PlotWrite:
+    net: str
+    sta: str
+    loc: str
+    phase: str
+    ch: str
+    study: optuna.study.Study
+    main_dir: str = os.path.dirname(os.path.abspath(__file__))
+
+    def __init__(self, net, sta, loc, ch, phase, study):
+        self.net = net
+        self.sta = sta
+        self.loc = loc
+        self.ch = ch
+        self.phase = phase
+        self.study = study
+
+    def plot_and_write(self):
+        fig_hist = optuna.visualization.plot_optimization_history(self.study)
+        params = {'P': ['p_sta', 'p_sta_width', 'p_fmin', 'p_fwidth', 'trig_on'],
+                'S': ['s_fmin', 's_fwidth', 's_snr']}
+        
+        #fig_cont = optuna.visualization.plot_contour(study,
+        #                                             params=['p_sta', 'p_sta_width'])
+        fig_slice = optuna.visualization.plot_slice(self.study,
+                                                    params=params[self.phase])
+        fig_parall = optuna.visualization\
+                    .plot_parallel_coordinate(self.study,
+                                            params=params[self.phase])
+
+        print(f'\n\n\033[92m{self.net}.{self.sta} - {self.phase}\033[0m')
+        print('Number of finished trials: {}'.format(len(self.study.trials)))
+
+        print('Best trial:')
+        trial = self.study.best_trial
+
+        print('  Value: {}'.format(trial.value))
+
+        print('  Params: ')
+        for key, value in trial.params.items():
+            print('    {}: {}'.format(key, value))
+        
+        best = trial.params
+        best.update({'best_loss': trial.value})
+
+        fig_hist.update_layout(font=dict(size=24))
+
+        fig_slice.update_layout(font=dict(size=22))
+
+        plotly.offline.plot(fig_slice,
+                            filename=f"images/slice_{self.net}.{self.sta}.{self.loc}_{self.phase}.html",
+                            auto_open=False)
+        plotly.offline.plot(fig_hist,
+                            filename=f"images/history_{self.net}.{self.sta}.{self.loc}_{self.phase}.html",
+                            auto_open=False)
+        #plotly.offline.plot(fig_cont,
+        #                    filename=f"images/contour_{self.net}.{self.sta}.{self.loc}_{self.phase}.html",
+        #                    auto_open=False)
+        plotly.offline.plot(fig_parall,
+                            filename=f"images/parallel_coord_{self.net}.{self.sta}.{self.loc}_{self.phase}.html",
+                            auto_open=False)
+
+        # write best params to .csv file
+        self.write_best_csv(best)
+        # write best params to self.station_CM_template config file if phase is S
+        if self.phase == 'S':
+            self.write_config_file()
+
+    def write_best_csv(self, best_params):
+        """Write best params to .csv file
+           if the file already exists, append the new line
+           else create a new file"""
+        csv_data = CSVData(self.phase, best_params, self.net, self.sta)
+        
+        results_file = f'results_{self.phase}.csv'
+        if not os.path.exists(results_file):
+            with open(results_file, 'w') as f:
+                f.write(csv_data.header)
+        with open(results_file, 'a') as f:
+            f.write(csv_data.values)
+
+    @property
+    def config_file_template(self):
+        return os.path.join(self.main_dir, 'bindings', 'station_NET_template')
+
+    @property
+    def out_dir(self):
+        return os.path.join(self.main_dir, 'output_station_files')
+
+    @property
+    def config_output_file(self):
+        return os.path.join(self.out_dir, f'station_{self.net}_{self.sta}')
     
+    def write_config_file(self):
+        """
+        Write the best params to the station_NET_template config file
+        """
+        
+        if not os.path.exists(self.out_dir):
+            os.mkdir(self.out_dir)
+        
+        # get optimized pick params from results_P.csv and results_S.csv
+        params_ = self.get_params_from_csv()
+        params = self.rename_params(params_)
+        
+        # write to config file
+        template = open(self.config_file_template, 'r').read()
+        with open(self.config_output_file, 'w') as f:
+            f.write(template.format(**params))
     
+    def get_params_from_csv(self):
+        params = self.get_p_params()
+        params.update(self.get_s_params())
+        params.update({'ch': self.ch, 'loc': self.loc})
+        return params
+    
+    def get_p_params(self):
+        """
+        Get pick params from results_P.csv
+        """
+        return self.get_params_from_csv_file('P')
+    
+    def get_s_params(self):
+        """
+        Get pick params from results_S.csv
+        """
+        return self.get_params_from_csv_file('S')
+    
+    def get_params_from_csv_file(self, phase):
+        """
+        Get best pick params from results_P.csv or results_S.csv
+        """
+        df = pd.read_csv(f'results_{phase}.csv')
+        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_loss
+        return df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_loss', ascending=False).iloc[0].to_dict()
+
+    def rename_params(self, params):
+        # rename params to match the station_NET_template config file
+        # p_sta_width, p_fwidth, aic_fwidth and s_fwidth
+        rename_dict = {'p_sta_width': 'p_lta', 'p_fwidth': 'p_fmax', 'aic_fwidth': 'aic_fmax', 's_fwidth': 's_fmax'}
+        
+        for key in rename_dict:
+            if key in params:
+                params[rename_dict[key]] = params.pop(key)
+        
+        return params

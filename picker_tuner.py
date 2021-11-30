@@ -129,7 +129,7 @@ def picker_tuner(cursor, ti, tf, params):
             write_current_exc(times_paths[phase], picks_dir, inv_xml, debug,
                               net, ch_, loc, sta)
             ic(phase)
-            bayes_optuna(net, sta, loc, phase, n_trials)
+            bayes_optuna(net, sta, loc, ch_, phase, n_trials)
     
 
 def write_current_exc(times_paths, picks_dir, inv_xml, debug,
