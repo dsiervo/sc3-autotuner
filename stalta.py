@@ -9,7 +9,6 @@ Created on Jul 20 2021
 import obspy
 import os
 import xml.etree.ElementTree as ET
-import pandas_read_xml as pdx
 import pandas as pd
 from obspy.core import UTCDateTime
 import numpy as np

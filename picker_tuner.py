@@ -7,8 +7,7 @@ Created on Jun 24 2021
 
 import os
 import sys
-from download_data import Query, Station, Waveform, waveform_downloader, DirectoryCreator
-from stalta import StaLta
+from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
 from optimizer import bayes_optuna
 from icecream import ic, install
