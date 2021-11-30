@@ -46,6 +46,13 @@ def picker_tuner(cursor, ti, tf, params):
     
     # seiscomp3 inventory in xml format
     inv_xml = params['inv_xml']
+    # check if inv_xml file exists
+    if not os.path.isfile(inv_xml):
+        # print in red color error message
+        print('\033[91m\n\n\t', end='')
+        print(f'Error: inv_xml file: {inv_xml} does not exist')
+        print('\033[0m', end='\n')
+        sys.exit()
     
     # define if the program is running in debug mode
     debug = params['debug']
