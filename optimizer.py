@@ -223,7 +223,7 @@ class PlotWrite:
 
     @property
     def out_dir(self):
-        return os.path.join(self.main_dir, 'output_station_files')
+        return os.path.join('output_station_files')
 
     @property
     def config_output_file(self):

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/dsiervo/sc3-autotuner/env/bin/python
 # -*- coding: utf-8 -*-
 """
 Created on Jun 24 2021
