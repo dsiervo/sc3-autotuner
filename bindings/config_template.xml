@@ -17,7 +17,7 @@
       <moduleID>Config/trunk</moduleID>
       <parameter publicID="Parameter/20210721213024.332692.9">
         <name>trigOn</name>
-        <value>{trig_on}</value>
+        <value>{trig_on:.2f}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.33273.11">
         <name>picker.AIC.filter</name>
@@ -37,11 +37,11 @@
       </parameter>
       <parameter publicID="Parameter/20210721213024.332794.15">
         <name>timeCorr</name>
-        <value>{p_timecorr}</value>
+        <value>{p_timecorr:.2f}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332807.16">
         <name>detecFilter</name>
-        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,{p_fmin},{p_fmax})&gt;&gt;STALTA({p_sta},{p_lta})</value>
+        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,{p_fmin},{p_fmax})&gt;&gt;STALTA({p_sta:.2f},{p_lta:.2f})</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332828.17">
         <name>trigOff</name>
@@ -53,7 +53,7 @@
       </parameter>
       <parameter publicID="Parameter/20210721213024.332842.19">
         <name>spicker.AIC.minSNR</name>
-        <value>{s_snr}</value>
+        <value>{s_snr:.2f}</value>
       </parameter>
     </parameterSet>
     <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/gaps" created="2021-07-21T21:30:24.332912Z">

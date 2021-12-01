@@ -19,7 +19,7 @@ spicker.AIC.minSNR = {s_snr:.2f}
 picker.AIC.filter = BW(4,{aic_fmin},{aic_fmax})
 
 # Defines the mininum SNR.
-picker.AIC.minSNR = {p_snr:.2f}
+picker.AIC.minSNR = {p_snr}
 
 # Defines the filter to be used for picking with 2 decimal places
 detecFilter = "RMHP(10)>>ITAPER(30)>>BW(4,{p_fmin},{p_fmax})>>STALTA({p_sta:.2f},{p_lta:.2f})"

@@ -26,15 +26,15 @@ def objetive_p(trial, metric='f1'):
                }
     
     space = {
-        'p_sta': trial.suggest_uniform('p_sta', 0.1, 3),
+        'p_sta': trial.suggest_float('p_sta', 0.1, 3, step=0.01),
         'p_sta_width': trial.suggest_loguniform('p_sta_width', 1, 100),
         'p_fmin': trial.suggest_int('p_fmin', 1, 10),
         'p_fwidth': trial.suggest_int('p_fwidth', 1, 10),
-        'p_timecorr': trial.suggest_uniform('p_timecorr', 0, 1),
+        'p_timecorr': trial.suggest_float('p_timecorr', 0, 1, step=0.01),
         'p_snr': trial.suggest_int('p_snr', 1, 4),
         'aic_fmin': trial.suggest_int('aic_fmin', 1, 10),
         'aic_fwidth': trial.suggest_int('aic_fwidth', 1, 10),
-        'trig_on': trial.suggest_uniform('trig_on', 2, 15)
+        'trig_on': trial.suggest_float('trig_on', 2, 15, step=0.01)
            }
 
     """stalta_params = {'p_sta': 0.1, 'p_lta': 5.7, 'p_fmin': 2,
@@ -68,7 +68,7 @@ def objective_s(trial, metric='f1'):
     space = {
         's_fmin': trial.suggest_int('s_fmin', 1, 10),
         's_fwidth': trial.suggest_int('s_fwidth', 1, 10),
-        's_snr': trial.suggest_uniform('s_snr', 1, 4)
+        's_snr': trial.suggest_float('s_snr', 1, 4, step=0.01)
            }
 
     """stalta_params = {'p_sta': 0.1, 'p_lta': 5.7, 'p_fmin': 2,

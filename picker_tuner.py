@@ -113,6 +113,7 @@ def picker_tuner(cursor, ti, tf, params):
         # creating station directory
         station.data_dir = dir_maker.make_dir(main_data_dir, sta)
         
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Consultando picks manuales ente {ti} y {tf}\n')
         # search for manual picks times
         query_picks = Query(cursor=cursor,
                             query_type='picks',
@@ -123,14 +124,14 @@ def picker_tuner(cursor, ti, tf, params):
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()
 
-        print(f'\n\n\033[95m Descargando formas de onda {net}.{sta}.{ch_}\033[0m\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Descargando formas de onda\n')
         times_paths = waveform_downloader(client, station, manual_picks, DT)
         # Excecutes sta/lta over all wf
         # creating xml picks directory
         picks_dir = dir_maker.make_dir(CWD, 'picks_xml')
         image_dir = dir_maker.make_dir(CWD, 'images')
         
-        print(f'\n\n\033[95m Optimizando pickers\033[0m\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Optimizando pickers\n')
         for phase in ['P', 'S']:
             write_current_exc(times_paths[phase], picks_dir, inv_xml, debug,
                               net, ch_, loc, sta)
