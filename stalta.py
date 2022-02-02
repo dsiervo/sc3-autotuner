@@ -35,8 +35,8 @@ class StaLta:
         Get the best p parameters
         """
         df = pd.read_csv(self.best_p_csv)
-        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_loss
-        p_best = df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_loss', ascending=False).iloc[0].to_dict()
+        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_f1
+        p_best = df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_f1', ascending=False).iloc[0].to_dict()
         return p_best
     
     @property

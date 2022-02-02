@@ -118,10 +118,10 @@ class CSVData:
         if self.phase == 'P':
             line = ','.join(['net.sta', 'p_sta', 'p_sta_width', 'p_fmin',
                               'p_fwidth', 'aic_fmin', 'aic_fwidth', 'p_timecorr',
-                              'p_snr', 'trig_on', 'best_loss\n'])
+                              'p_snr', 'trig_on', 'best_f1\n'])
             return line
         elif self.phase == 'S':
-            return 'net.sta,s_fmin,s_fwidth,s_snr,best_loss\n'
+            return 'net.sta,s_fmin,s_fwidth,s_snr,best_f1\n'
     
     @property
     def values(self):
@@ -130,10 +130,10 @@ class CSVData:
             line += f'{self.best_params["p_sta_width"]},{self.best_params["p_fmin"]},'
             line += f'{self.best_params["p_fwidth"]},{self.best_params["aic_fmin"]},'
             line += f'{self.best_params["aic_fwidth"]},{self.best_params["p_timecorr"]},'
-            line += f'{self.best_params["p_snr"]},{self.best_params["trig_on"]},{self.best_params["best_loss"]}\n'
+            line += f'{self.best_params["p_snr"]},{self.best_params["trig_on"]},{self.best_params["best_f1"]}\n'
             return line
         elif self.phase == 'S':
-            return f'{self.net}.{self.sta},{self.best_params["s_fmin"]},{self.best_params["s_fwidth"]},{self.best_params["s_snr"]},{self.best_params["best_loss"]}\n'
+            return f'{self.net}.{self.sta},{self.best_params["s_fmin"]},{self.best_params["s_fwidth"]},{self.best_params["s_snr"]},{self.best_params["best_f1"]}\n'
 
 
 class PlotWrite:
@@ -172,14 +172,14 @@ class PlotWrite:
         print('Best trial:')
         trial = self.study.best_trial
 
-        print('  Value: {}'.format(trial.value))
+        print('  Best f1-score {}'.format(trial.value))
 
         print('  Params: ')
         for key, value in trial.params.items():
             print('    {}: {}'.format(key, value))
         
         best = trial.params
-        best.update({'best_loss': trial.value})
+        best.update({'best_f1': trial.value})
 
         fig_hist.update_layout(font=dict(size=24))
 
@@ -269,8 +269,8 @@ class PlotWrite:
         Get best pick params from results_P.csv or results_S.csv
         """
         df = pd.read_csv(f'results_{phase}.csv')
-        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_loss
-        return df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_loss', ascending=False).iloc[0].to_dict()
+        # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_f1
+        return df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_f1', ascending=False).iloc[0].to_dict()
 
     def rename_params(self, params):
         # rename params to match the station_NET_template config file
