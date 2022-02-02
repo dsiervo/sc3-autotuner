@@ -122,6 +122,7 @@ A continuación se explicará cada uno de estos parámetros:
 **-** `n_trials`: Número de intentos que hará el programa para ajustar el picker de cada fase y de cada estación.
 
 ## Salida del programa
+### Archivos importantes
 * Carpeta `output_station_files`: Los archivos contenidos en esta carpeta contienen los resultados del ajuste de cada estación en el formato apropiado para su incorporación en la configuración de SeisComP3. Para agregar estos resultados a su sistema debe copiar estos archivos al directorio `seicomp3/etc/key/scautopick` y luego agregar la siguiente línea en los archivos homónimos en la ruta `seicomp3/etc/key/`:
 
       scautopick
@@ -129,4 +130,9 @@ A continuación se explicará cada uno de estos parámetros:
   Ahora SeisComP3 reconocerá que dichas estaciones están disponibles para ser usadas por el autopicker scautopick y para el picado utilizará los parámetros consignados en el archivo de configuración de la estación en la ruta `seicomp3/etc/key/scautopick`.
 
 * Carpeta `images`: Gráficas interactivas del proceso de ajuste de cada fase de cada estación. Puede abrirlas con cualquier navegador web.
-* Archivos `results_P.csv` y `results_S.csv`: Compilación de los mejores parámetros encontrados para cada fase y estación.
+* Archivos `results_P.csv` y `results_S.csv`: Compilación de los mejores parámetros encontrados para cada fase y estación junto con el valor del f1-score de esa iteración.
+
+### Archivos y carpetas residuales
+* `exc_<station>_<phase>.xml`: Contienen los parámetros de los pickers en la última iteración.
+* `mseed_data`: Carpeta con las formas de onda usadas en el ajuste.
+* `picks_xml`: Carpeta con archivos XML en formato seiscomp con los picks generados en la última iteración. 
