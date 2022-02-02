@@ -113,7 +113,7 @@ def picker_tuner(cursor, ti, tf, params):
         # creating station directory
         station.data_dir = dir_maker.make_dir(main_data_dir, sta)
         
-        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Consultando picks manuales ente {ti} y {tf}\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Consultando picks manuales entre {ti} y {tf}\n')
         # search for manual picks times
         query_picks = Query(cursor=cursor,
                             query_type='picks',
