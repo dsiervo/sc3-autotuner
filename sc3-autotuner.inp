@@ -19,6 +19,10 @@ tf = 2020-12-01 23:59:59
 # inventory xml file
 inv_xml = xmldata232/inventory.xml
 
+# sql usr and psw for query
+sql_usr = consulta
+sql_psw = consulta
+
 # =======================================
 # pick_tuner options
 # =======================================

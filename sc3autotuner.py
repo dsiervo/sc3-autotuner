@@ -36,13 +36,16 @@ def main():
         tune_mode = params['tune_mode']
         ti = params['ti']
         tf = params['tf']
+        sql_usr = params['sql_usr']
+        sql_psw = params['sql_psw']
     except KeyError:
-        print('\n\n\tERROR! db_ip, tune_mode, ti or tf no defined in sc3-autotuner.inp\n\n')
+        print('\n\n\tERROR! db_ip, tune_mode, ti, tf, sql_usr or sql_psw no defined in sc3-autotuner.inp\n\n')
         sys.exit()
     
+    # user and passwd have to be a variable
     db = MySQLdb.connect(host=db_ip,
-                         user='consulta',
-                         passwd='consulta',
+                         user=sql_usr,
+                         passwd=sql_psw,
                          db='seiscomp3')
 
     cursor = db.cursor()
@@ -64,7 +67,13 @@ def main():
         sys.exit()
         
     
-    # Run picker and assoc tunners
+def get_param(param_name, params):
+    try:
+        param_val = params[param_name]
+        return param_val
+    except KeyError:
+        print(f'\n\n\tERROR! {param_name} no defined in sc3-autotuner.inp\n\n')
+        sys.exit()
 
 
 def read_params(par_file='sc3-autotuner.inp'):

@@ -239,7 +239,7 @@ class PlotWrite:
         
         # get optimized pick params from results_P.csv and results_S.csv
         params_ = self.get_params_from_csv()
-        params = self.rename_params(params_)
+        params = self.fix_params(params_)
         
         # write to config file
         template = open(self.config_file_template, 'r').read()
@@ -272,13 +272,18 @@ class PlotWrite:
         # selecting the row with net.sta equal to CM.BAR2 and with the highest value of best_f1
         return df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_f1', ascending=False).iloc[0].to_dict()
 
-    def rename_params(self, params):
+    def fix_params(self, params):
         # rename params to match the station_NET_template config file
         # p_sta_width, p_fwidth, aic_fwidth and s_fwidth
         rename_dict = {'p_sta_width': 'p_lta', 'p_fwidth': 'p_fmax', 'aic_fwidth': 'aic_fmax', 's_fwidth': 's_fmax'}
         
-        for key in rename_dict:
+        params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
+        params['p_lta'] = params['p_sta'] + params['p_sta_width']
+        params['aic_fmax'] = params['aic_fmin'] + params['aic_fwidth']
+        params['s_fmax'] = params['s_fmin'] + params['s_fwidth']
+
+        """for key in rename_dict:
             if key in params:
-                params[rename_dict[key]] = params.pop(key)
+                params[rename_dict[key]] = params.pop(key)"""
         
         return params
