@@ -101,7 +101,7 @@ A continuación se explicará cada uno de estos parámetros:
 
 **-** `debug`: Si es `True` muestra información de depuración y mostrará plots de los resultados.
 
-**-** `db_ip`: Dirección IP del servidor SQL para la consulta de picks y eventos.
+**-** `deb_url`: Dirección IP del servidor SQL para la consulta de picks y eventos.
 
 **-** `ti`: Tiempo inicial para la consulta de picks y eventos. Debe ser una fecha en formato `YYYY-MM-DD HH:MM:SS`.
 

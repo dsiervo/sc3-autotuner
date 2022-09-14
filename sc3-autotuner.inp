@@ -7,10 +7,10 @@ tune_mode = picker
 
 # Debug? If True, will print out debug messages and plots
 # the picks and the waveforms
-debug = False
+debug = True
 
 # IP to server with SQL data base for events query
-db_ip = 10.100.100.232
+deb_url = sc3primary.beg.utexas.edu
 
 # Initial and final times for picks searching
 ti = 2020-10-01 00:00:00
@@ -20,8 +20,8 @@ tf = 2020-12-01 23:59:59
 inv_xml = xmldata232/inventory.xml
 
 # sql usr and psw for query
-sql_usr = consulta
-sql_psw = consulta
+sql_usr = sysop
+sql_psw = sysop
 
 # =======================================
 # pick_tuner options

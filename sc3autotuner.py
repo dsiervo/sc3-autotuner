@@ -32,18 +32,18 @@ def main():
     else:
         ic.enable()
     try:
-        db_ip = params['db_ip']
+        deb_url = params['deb_url']
         tune_mode = params['tune_mode']
         ti = params['ti']
         tf = params['tf']
         sql_usr = params['sql_usr']
         sql_psw = params['sql_psw']
     except KeyError:
-        print('\n\n\tERROR! db_ip, tune_mode, ti, tf, sql_usr or sql_psw no defined in sc3-autotuner.inp\n\n')
+        print('\n\n\tERROR! deb_url, tune_mode, ti, tf, sql_usr or sql_psw no defined in sc3-autotuner.inp\n\n')
         sys.exit()
     
     # user and passwd have to be a variable
-    db = MySQLdb.connect(host=db_ip,
+    db = MySQLdb.connect(host=deb_url,
                          user=sql_usr,
                          passwd=sql_psw,
                          db='seiscomp3')
