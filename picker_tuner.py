@@ -9,6 +9,7 @@ import os
 import sys
 from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
+from MySQLdb import OperationalError
 from optimizer import bayes_optuna
 from icecream import ic, install
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
@@ -34,16 +35,29 @@ def picker_tuner(cursor, ti, tf, params):
         Final time to search for thet picks that will be used in the
         bayesian optimization. Format: yyyy-MM-dd hh:mm:ss
     """
-
-    # defining radius of 2 degrees in km for picks search
-    RADIUS = 111*2
     
-    # time after and before pick for waveform extraction
+    # time in seconds after and before pick for waveform extraction
     DT = 100
     
     # current working directory (directory from where the program is running)
     CWD = os.getcwd()
-    
+
+    try:
+        # defining radius in km for picks search
+        radius = float(params['radius'])
+    except KeyError:
+        print('\033[91m\n\n\n\n\t', end='')
+        print(f"You did not define a radius (km) parameter in the sc3-autuner.inp file")
+        print(f"\tAsuming 100")
+        print('\033[0m', end='\n\n\n')
+        radius = 100
+    except ValueError:
+        print('\033[91m\n\n\n\n\t', end='')
+        print(f"Wrong radius value given")
+        print(f"\tAsuming 100")
+        print('\033[0m', end='\n\n\n')
+        radius = 100       
+
     # seiscomp3 inventory in xml format
     inv_xml = params['inv_xml']
     # check if inv_xml file exists
@@ -105,7 +119,28 @@ def picker_tuner(cursor, ti, tf, params):
                                        'sta': sta,
                                        'loc': loc,
                                        'ch': ch_})
-        channels, lat, lon = query_coords.execute_query()
+
+        try:                               
+            channels, lat, lon = query_coords.execute_query()
+        except OperationalError:
+            print('\033[91m\n\n\n\n\t', end='')
+            print(f"Lost connection to MySQL server during coords query, station {sta}")
+            print(f"\tContinuing with the next one...")
+            print('\033[0m', end='\n\n\n')
+            # writing in a file that the station could not be tuned
+            not_tuned_station(sta+' lost connection to MySQL during coords query')
+            continue            
+        # if the sql query dont find data about the station continue with the
+        # next one
+        if (channels, lat, lon) == (0,0,0):
+            print('\033[91m\n\n\n\n\t', end='')
+            print(f"Unable to find information about the station {sta}")
+            print(f"\tContinuing with the next one...")
+            print('\033[0m', end='\n\n\n')
+            # writing in a file that the station could not be tuned
+            not_tuned_station(sta+' station not found in the SQL DB')
+            continue
+
         ic(channels)
         # creating a station object
         station = Station(lat, lon, net, sta, loc, ch_)
@@ -113,30 +148,46 @@ def picker_tuner(cursor, ti, tf, params):
         # creating station directory
         station.data_dir = dir_maker.make_dir(main_data_dir, sta)
         
-        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Consultando picks manuales entre {ti} y {tf}\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Searching for manual picks between {ti} and {tf}\n')
         # search for manual picks times
         query_picks = Query(cursor=cursor,
                             query_type='picks',
                             dic_data={'sta': sta, 'net': net,
                                       'sta_lat': lat, 'sta_lon': lon,
                                       'ti': ti, 'tf': tf,
-                                      'radius': RADIUS,
+                                      'radius': radius,
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()
+        if len(manual_picks) < 5:
+            print(f'Less than 5 manual picks found for {station.name}')
+            not_tuned_station(station.name+' less than 5 picks found')
+            continue           
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Found {len(manual_picks)} manual picks between {ti} and {tf}\n')
 
-        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Descargando formas de onda\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Downloading waveforms\n')
         times_paths = waveform_downloader(client, station, manual_picks, DT)
+
+        # if the program couldn't download any waveform for the current station
+        # continue with the following one
+        if times_paths is None:
+            print(f'No waveforms downloaded for {station.name} due lack of good picks')
+            not_tuned_station(station.name+' lack good picks')
+            continue
         # Excecutes sta/lta over all wf
         # creating xml picks directory
         picks_dir = dir_maker.make_dir(CWD, 'picks_xml')
         image_dir = dir_maker.make_dir(CWD, 'images')
         
-        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Optimizando pickers\n')
+        print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Optimizing pickers\n')
         for phase in ['P', 'S']:
             write_current_exc(times_paths[phase], picks_dir, inv_xml, debug,
                               net, ch_, loc, sta)
             ic(phase)
             bayes_optuna(net, sta, loc, ch_, phase, n_trials)
+
+def not_tuned_station(station):
+    with open('stations_not_tuned.txt', 'a') as f:
+        f.write(f'{station}\n')
     
 
 def write_current_exc(times_paths, picks_dir, inv_xml, debug,

@@ -9,14 +9,17 @@ detecStream = {ch}
 detecLocid = {loc}
 
 # Configures the filter used to compute the L2.
-spicker.AIC.filter = BW(4,{s_fmin},{s_fmax})
+spicker.AIC.filter = ITAPER(1)>>BW(4,{s_fmin},{s_fmax})
 
 # Defines the mininum SNR as returned from AIC.
 spicker.AIC.minSNR = {s_snr:.2f}
 
+# The AIC time window stepping in seconds. For every step the AIC is computed.
+spicker.AIC.step = 0.1
+
 # Overrides the default filter which is "raw". The typical filter grammar can
 # be used.
-picker.AIC.filter = BW(4,{aic_fmin},{aic_fmax})
+picker.AIC.filter = ITAPER(1)>>BW(4,{aic_fmin},{aic_fmax})
 
 # Defines the mininum SNR.
 picker.AIC.minSNR = {p_snr}

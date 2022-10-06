@@ -159,7 +159,10 @@ class StaLta:
         return int((time - self.wf_start_time) * self.sample_rate)
 
     def test_binary_times(self, y_obs, y_pred):
+        import matplotlib
         import matplotlib.pyplot as plt
+        matplotlib.use('Agg') 
+
         plt.figure()
         plt.plot(y_obs, label='Y_obs')
         plt.plot(y_pred, "--r", label='Y_pred')
@@ -307,7 +310,7 @@ class BinaryTransform:
     """
     Transform pick times into a binary time series
     """
-    unc: float = 1.0
+    unc: float = 0.25
     
     def __init__(self, wf_start_time: UTCDateTime, sample_rate: float,
                  npts: int, ph_times: list):

@@ -4,7 +4,7 @@ import datetime
 from dataclasses import dataclass
 import obspy
 import os
-from obspy.clients.fdsn.header import FDSNException
+from obspy.clients.fdsn.header import FDSNException,FDSNNoDataException
 import scipy as sc
 import csv
 import sys
@@ -74,7 +74,7 @@ class DownloadWaveform:
                                                 starttime=self.pick.ti,
                                                 endtime=self.pick.tf)
             return True
-        except FDSNException:
+        except (FDSNException, FDSNNoDataException):
             print('\n\n\tNo se encontraron datos')
             print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
             print(f'\t{self.pick.ti} - {self.pick.tf}')
@@ -283,6 +283,11 @@ class Query:
             return [list(x) for x in self.cursor.fetchall()]
         elif self.query_type == 'station_coords':
             ch_and_coords = self.cursor.fetchall()
+            if len(ch_and_coords) == 0:
+                return 0, 0, 0
+            ic(ch_and_coords)
+            ic(type(ch_and_coords))
+            ic(len(ch_and_coords))
             # list of available channels for this sensor
             channels = [x[0] for x in ch_and_coords]
             lat, lon = ch_and_coords[0][1:]
@@ -336,7 +341,10 @@ def waveform_downloader(client, station, manual_picks: list, dt: int):
         waveforms[waveform.event_id] = download
         # writing the mseed file
         download.write()
-        
+
+    if not waveforms:
+        return None
+
     # write phase times on file and return the paths to times file
     return write_picks(p_times, s_times, waveforms, station)
 
@@ -390,9 +398,6 @@ class WritePhases:
 
 
 def write_picks(p_picks, s_picks, waveforms, station):
-    if not waveforms:
-        print(f'No waveforms downloaded for {station.name} due lack of good picks')
-        sys.exit(0)
     # write pick times in a csv file
     picks = {'P': p_picks, 'S': s_picks}
     times_paths = {}

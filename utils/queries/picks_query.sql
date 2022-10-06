@@ -16,8 +16,8 @@ left join PublicObject as POOri2 on POOri2.publicID = A_s.pickID
 left join Pick pick_p on pick_p._oid = POOri1._oid
 left join Pick pick_s on pick_s._oid = POOri2._oid
 where
-pick_p.phaseHint_used = 1
-AND pick_p.evaluationMode = 'manual'
+#pick_p.phaseHint_used = 1
+pick_p.evaluationMode = 'manual'
 AND pick_s.evaluationMode = 'manual'
 AND pick_p.waveformID_stationCode = pick_s.waveformID_stationCode
 AND Origin.time_value between "{ti}" and "{tf}"
@@ -25,4 +25,5 @@ AND pick_p.waveformID_networkCode = "{net}"
 AND pick_p.waveformID_stationCode = "{sta}" 
 AND Magnitude.magnitude_value between 1.2 and 4.0
 HAVING radius < {radius}
+order by pick_p.time_value desc
 LIMIT {max_picks}

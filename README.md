@@ -80,6 +80,8 @@ Ajuste automático de parámetros de los módulos de SeisComP3 scautopick y scan
     $ source ~/.bashrc
     ```
 
+11. Cambie el path de la ruta a la carpeta sc3-autotuner en la primera linea del script **sc3autotuner.py**
+
 # Uso
 El programa lee los parámetros desde el archivo sc3-autotuner.inp que se encuentran en el directorio de ejecución.
 

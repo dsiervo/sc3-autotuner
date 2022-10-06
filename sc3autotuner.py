@@ -1,4 +1,4 @@
-#!/home/dsiervo/sc3-autotuner/env/bin/python
+#!/home/daniel/sc3-autotuner/venv/bin/python
 # -*- coding: utf-8 -*-
 """
 Created on Jun 24 2021
