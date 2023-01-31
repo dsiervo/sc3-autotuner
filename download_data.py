@@ -40,13 +40,13 @@ class DirectoryCreator:
 class DownloadWaveform:
     pick: Waveform
     station: Station
-    client: obspy.clients.fdsn.Client
+    clients: list # [obspy.clients.fdsn.client.Client]
     ch: str
     
-    def __init__(self, pick, station, client):
+    def __init__(self, pick, station, clients):
         self.pick = pick
         self.station = station
-        self.client = client
+        self.clients = clients
     
     @property
     def data_dir(self):
@@ -67,7 +67,7 @@ class DownloadWaveform:
 
     def get_wf_stream(self):
         try:
-            self.st = self.client.get_waveforms(network=self.station.net,
+            self.st = self.clients[0].get_waveforms(network=self.station.net,
                                                 station=self.station.name,
                                                 location=self.station.loc,
                                                 channel=self.station.ch+'*',
@@ -75,10 +75,19 @@ class DownloadWaveform:
                                                 endtime=self.pick.tf)
             return True
         except (FDSNException, FDSNNoDataException):
-            print('\n\n\tNo se encontraron datos')
-            print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
-            print(f'\t{self.pick.ti} - {self.pick.tf}')
-            return False
+            try:
+                self.st = self.clients[1].get_waveforms(network=self.station.net,
+                                                    station=self.station.name,
+                                                    location=self.station.loc,
+                                                    channel=self.station.ch+'*',
+                                                    starttime=self.pick.ti,
+                                                    endtime=self.pick.tf)
+                return True
+            except (FDSNException, FDSNNoDataException):
+                print('\n\n\tNo se encontraron datos')
+                print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
+                print(f'\t{self.pick.ti} - {self.pick.tf}')
+                return False
     
     def trim_and_merge(self):
         self.st.trim(self.pick.ti, self.pick.tf)
@@ -296,7 +305,7 @@ class Query:
             raise Exception('query_type does not match with picks or station_coords')
 
 
-def waveform_downloader(client, station, manual_picks: list, dt: int):
+def waveform_downloader(clients, station, manual_picks: list, dt: int):
 
     ic(len(manual_picks))
     # keeping with event id and p times in manual_picks
@@ -316,7 +325,7 @@ def waveform_downloader(client, station, manual_picks: list, dt: int):
 
     # Download waveforms for each pick
     for waveform in purged_wf:
-        download = DownloadWaveform(waveform, station, client)
+        download = DownloadWaveform(waveform, station, clients)
         # checking if the mseed exist
         mseed_exists = download.mseed_exists()
         # if the mseed already exists continue to the next waveform

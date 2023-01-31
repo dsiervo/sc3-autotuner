@@ -87,7 +87,9 @@ def picker_tuner(cursor, ti, tf, params):
     
     try:
         # fdsn client for waveforms download
-        client = obspy.clients.fdsn.Client(params['fdsn_ip'])
+        #client = obspy.clients.fdsn.Client(params['fdsn_ip'])
+        clients = [obspy.clients.fdsn.Client(ip.strip()) for ip in params['fdsn_ip'].split(',')]
+        ic(clients)
     except KeyError:
         print('\n\n\t ERROR! fdsn_ip not defined in sc3-autotuner.inp')
 
@@ -165,7 +167,7 @@ def picker_tuner(cursor, ti, tf, params):
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Found {len(manual_picks)} manual picks between {ti} and {tf}\n')
 
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Downloading waveforms\n')
-        times_paths = waveform_downloader(client, station, manual_picks, DT)
+        times_paths = waveform_downloader(clients, station, manual_picks, DT)
 
         # if the program couldn't download any waveform for the current station
         # continue with the following one
