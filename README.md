@@ -46,6 +46,11 @@ Ajuste automático de parámetros de los módulos de SeisComP3 scautopick y scan
     ```
 
 6. Instale las dependencias:
+    Instale los headers y librerias para MySQL o MariaDB:
+    ```bash
+    (venv) $ sudo apt install default-libmysqlclient-dev
+    ```
+    Instale las dependencias de python:
     ```bash
     (venv) $ pip install -r requirements.txt
     ```
