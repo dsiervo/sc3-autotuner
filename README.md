@@ -1,7 +1,7 @@
 # sc3-autotuner
-Bayesian optimization approach for tuning SeisComP3's `scautopick` and `scanloc` modules.
+Bayesian optimization approach for tuning SeisComP's `scautopick` module.
 
-Automatic parameter tuning for the SeisComP3 `scautopick` and `scanloc` modules using Bayesian optimization.
+Automatic parameter tuning for the SeisComP `scautopick` module using Bayesian optimization.
 
 # Installation
 
@@ -55,7 +55,7 @@ Automatic parameter tuning for the SeisComP3 `scautopick` and `scanloc` modules 
     (venv) $ pip install -r requirements.txt
     ```
 
-7. Add the S-AIC pick plugin to the `global.cfg` file of your SeisComP3 installation.
+7. Add the S-AIC pick plugin to the `global.cfg` file of your SeisComP installation.
 
     Open the file **seicomp3/etc/global.cfg** and add *saic* to the end of the plugins list:
 
