@@ -1,23 +1,23 @@
 # sc3-autotuner
-Bayesian optimization approach for tuning SeisComP3's scautopick and scanloc modules.
+Bayesian optimization approach for tuning SeisComP3's `scautopick` and `scanloc` modules.
 
-Ajuste automático de parámetros de los módulos de SeisComP3 scautopick y scanloc usando optimización bayesiana.
+Automatic parameter tuning for the SeisComP3 `scautopick` and `scanloc` modules using Bayesian optimization.
 
-# Instalación
+# Installation
 
-## Requisitos
-* SeisComP3
-* Módulo scanloc de SeisComP3
-* Ubuntu 18.04 LTS o superior
+## Requirements
+* SeisComP
+* SeisComP `scanloc` module
+* Ubuntu 18.04 LTS or higher
 
-1. Instale los pre requisitos de python3.8:
+1. Install the prerequisites for Python 3.8:
 
     ```bash
     $ sudo apt update
     $ sudo apt install software-properties-common
     ```
 
-2. Instale python3.8:
+2. Install Python 3.8:
 
     ```bash
     $ sudo add-apt-repository ppa:deadsnakes/ppa
@@ -25,121 +25,120 @@ Ajuste automático de parámetros de los módulos de SeisComP3 scautopick y scan
     $ sudo apt install python3.8 python3.8-dev python3.8-venv python3.8-tk
     ```
 
-3. Descargue el repositorio de sc3-autotuner:
+3. Download the sc3-autotuner repository:
 
     ```bash
     $ git clone https://github.com/dsiervo/sc3-autotuner
     $ cd sc3-autotuner
     ```
 
-4. Cree y active una instancia de python3.8:
+4. Create and activate a Python 3.8 virtual environment:
 
     ```bash
     $ python3.8 -m venv venv
     $ source venv/bin/activate
     ```
 
-5. Actualice pip:
+5. Update pip:
 
     ```bash
     (venv) $ pip install --upgrade pip
     ```
 
-6. Instale las dependencias:
-    Instale los headers y librerias para MySQL o MariaDB:
+6. Install dependencies:
+    Install headers and libraries for MySQL or MariaDB:
     ```bash
     (venv) $ sudo apt install default-libmysqlclient-dev
     ```
-    Instale las dependencias de python:
+    Install Python dependencies:
     ```bash
     (venv) $ pip install -r requirements.txt
     ```
 
-7. Agregue el pluging del pick S-AIC al global.cfg de su instalación de SeisComP3.
+7. Add the S-AIC pick plugin to the `global.cfg` file of your SeisComP3 installation.
 
-    Abra el archivo **seicomp3/etc/global.cfg** y agregue *saic* al final de la lista de plugins:
+    Open the file **seicomp3/etc/global.cfg** and add *saic* to the end of the plugins list:
 
     ```bash
     plugins = hypo71,mlr,saic
     ```
 
-8. Configure el S-AIC como picker secundario del scautopick:
+8. Configure S-AIC as a secondary picker for `scautopick`:
 
-    Abra el archivo **seicomp3/etc/scautopick.cfg** (si no existe creelo en esa ruta) y agregue la siguiente línea (o reemplace la existente):
+    Open the file **seicomp3/etc/scautopick.cfg** (create it if it doesn’t exist) and add the following line (or replace the existing one):
 
     ```bash
     spicker = S-AIC
     ```
 
-9. Desactive el ambiente de python3.8 y actualice la configuración de SeisComP3:
+9. Deactivate the Python 3.8 environment and update the SeisComP3 configuration:
 
     ```bash
     (venv) $ deactivate
     $ seiscomp update-config
     ```
 
-10. Agregue sc3-autotuner al path en el archivo **~/.bashrc**:
+10. Add sc3-autotuner to your PATH in the **~/.bashrc** file:
 
     ```bash
-    $ echo 'export PATH=<ruta a sc3-autotuner>:$PATH' >> ~/.bashrc
+    $ echo 'export PATH=<path to sc3-autotuner>:$PATH' >> ~/.bashrc
     $ source ~/.bashrc
     ```
 
-11. Cambie el path de la ruta a la carpeta sc3-autotuner en la primera linea del script **sc3autotuner.py**
+11. Change the path to the sc3-autotuner folder in the first line of the **sc3autotuner.py** script.
 
-# Uso
-El programa lee los parámetros desde el archivo sc3-autotuner.inp que se encuentran en el directorio de ejecución.
+# Usage
+The program reads parameters from the `sc3-autotuner.inp` file located in the execution directory.
 
-1. Copie en su directorio de trabajo el archivo *sc3-autotuner.inp*. 
-2. Modifique el archivo *sc3-autotuner.inp* de acuerdo a sus preferencias.
-3. Ejecute el programa:
+1. Copy the `sc3-autotuner.inp` file to your working directory.
+2. Modify the `sc3-autotuner.inp` file according to your preferences.
+3. Run the program:
 
     ```bash
     $ sc3autotuner.py
     ```
 
 ## sc3-autotuner.inp
-Puede introducir comentarios al *sc3-autotuner.inp* usando el caracter # al inicio de la línea.
+You can add comments to the `sc3-autotuner.inp` file using the `#` character at the beginning of the line.
 
-A continuación se explicará cada uno de estos parámetros:
+The following parameters are explained below:
 
-### Parámetros Globales
-**-** `tune_mode`: Controla si se ajusta el picker (`picker`) o se ajusta el asociador (`asoc`). Por el momento sólo se acepta el valor `picker`.
+### Global Parameters
+**-** `tune_mode`: Controls whether to tune the picker (`picker`) or the associator (`asoc`). Currently, only `picker` is accepted.
 
-**-** `debug`: Si es `True` muestra información de depuración y mostrará plots de los resultados.
+**-** `debug`: If `True`, displays debugging information and plots the results.
 
-**-** `deb_url`: Dirección IP del servidor SQL para la consulta de picks y eventos.
+**-** `deb_url`: IP address of the SQL server for querying picks and events.
 
-**-** `ti`: Tiempo inicial para la consulta de picks y eventos. Debe ser una fecha en formato `YYYY-MM-DD HH:MM:SS`.
+**-** `ti`: Start time for querying picks and events. Must be in the `YYYY-MM-DD HH:MM:SS` format.
 
-**-** `tf`: Tiempo final para la consulta de picks y eventos. Debe ser una fecha en formato `YYYY-MM-DD HH:MM:SS`.
+**-** `tf`: End time for querying picks and events. Must be in the `YYYY-MM-DD HH:MM:SS` format.
 
-**-** `inv_xml`: Ruta al archivo XML de con la información del inventory. Puede usar el módulo de SeisComP3 [scxmldump](https://docs.gempa.de/seiscomp3/current/apps/scxmldump.html) para generar el archivo.
+**-** `inv_xml`: Path to the XML file containing inventory information. You can use the SeisComP3 [scxmldump](https://docs.gempa.de/seiscomp3/current/apps/scxmldump.html) module to generate the file.
 
-
-### Opciones del modo picker
-**-** `stations`: Lista de estaciones a usar separadas por coma en formato: `<network>.<station>.<location>.<channel sin componente>`. Por ejemplo:
+### Picker Mode Options
+**-** `stations`: Comma-separated list of stations in the format `<network>.<station>.<location>.<channel without component>`. For example:
 
     stations = IU.ANMO.10.BH, CM.BAR2.00.HH, CM.DBB.20.EH
 
-**-** `fdsn_ip`: Dirección IP y puerto del servidor FDSN para la descarga de las formas de onda (Usualmente en SeisComP3 la IP del servidor FDSN es la misma que la IP del servidor SQL mas el puerto 8091).
+**-** `fdsn_ip`: IP address and port of the FDSN server for downloading waveforms (in SeisComP3, the FDSN server IP is usually the same as the SQL server IP with port 8091).
 
-**-** `max_picks`: Número máximo de picks manuales por estación a usar en el ajuste.
+**-** `max_picks`: Maximum number of manual picks per station to use in tuning.
 
-**-** `n_trials`: Número de intentos que hará el programa para ajustar el picker de cada fase y de cada estación.
+**-** `n_trials`: Number of attempts the program will make to tune the picker for each phase and station.
 
-## Salida del programa
-### Archivos importantes
-* Carpeta `output_station_files`: Los archivos contenidos en esta carpeta contienen los resultados del ajuste de cada estación en el formato apropiado para su incorporación en la configuración de SeisComP3. Para agregar estos resultados a su sistema debe copiar estos archivos al directorio `seicomp3/etc/key/scautopick` y luego agregar la siguiente línea en los archivos homónimos en la ruta `seicomp3/etc/key/`:
+## Program Output
+### Important Files
+* Folder `output_station_files`: Contains the tuning results for each station in the appropriate format for incorporation into SeisComP3. To add these results to your system, copy these files to the `seicomp3/etc/key/scautopick` directory and add the following line to the corresponding files in the `seicomp3/etc/key/` path:
 
       scautopick
 
-  Ahora SeisComP3 reconocerá que dichas estaciones están disponibles para ser usadas por el autopicker scautopick y para el picado utilizará los parámetros consignados en el archivo de configuración de la estación en la ruta `seicomp3/etc/key/scautopick`.
+  SeisComP3 will now recognize these stations for use by the `scautopick` autopicker and use the parameters specified in the station configuration file in the `seicomp3/etc/key/scautopick` directory.
 
-* Carpeta `images`: Gráficas interactivas del proceso de ajuste de cada fase de cada estación. Puede abrirlas con cualquier navegador web.
-* Archivos `results_P.csv` y `results_S.csv`: Compilación de los mejores parámetros encontrados para cada fase y estación junto con el valor del f1-score de esa iteración.
+* Folder `images`: Contains interactive plots of the tuning process for each phase and station. These can be opened with any web browser.
+* Files `results_P.csv` and `results_S.csv`: Compile the best parameters found for each phase and station along with the F1-score value for that iteration.
 
-### Archivos y carpetas residuales
-* `exc_<station>_<phase>.xml`: Contienen los parámetros de los pickers en la última iteración.
-* `mseed_data`: Carpeta con las formas de onda usadas en el ajuste.
-* `picks_xml`: Carpeta con archivos XML en formato seiscomp con los picks generados en la última iteración. 
+### Residual Files and Folders
+* `exc_<station>_<phase>.xml`: Contains the picker parameters for the last iteration.
+* `mseed_data`: Folder containing the waveforms used in the tuning process.
+* `picks_xml`: Folder containing XML files in SeisComP3 format with the picks generated in the last iteration.
