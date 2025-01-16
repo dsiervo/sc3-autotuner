@@ -18,6 +18,7 @@ left join Pick pick_s on pick_s._oid = POOri2._oid
 where
 #pick_p.phaseHint_used = 1
 pick_p.evaluationMode = 'manual'
+AND Origin.evaluationStatus in ('final', 'preliminary')
 AND pick_s.evaluationMode = 'manual'
 AND pick_p.waveformID_stationCode = pick_s.waveformID_stationCode
 AND Origin.time_value between "{ti}" and "{tf}"

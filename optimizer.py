@@ -275,7 +275,7 @@ class PlotWrite:
     def fix_params(self, params):
         # rename params to match the station_NET_template config file
         # p_sta_width, p_fwidth, aic_fwidth and s_fwidth
-        rename_dict = {'p_sta_width': 'p_lta', 'p_fwidth': 'p_fmax', 'aic_fwidth': 'aic_fmax', 's_fwidth': 's_fmax'}
+        #rename_dict = {'p_sta_width': 'p_lta', 'p_fwidth': 'p_fmax', 'aic_fwidth': 'aic_fmax', 's_fwidth': 's_fmax'}
         
         params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
         params['p_lta'] = params['p_sta'] + params['p_sta_width']

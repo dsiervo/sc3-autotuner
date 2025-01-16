@@ -122,6 +122,8 @@ class StaLta:
         ic(np.unique(Y_pred))
         # plot if debug is true
         if self.debug:
+            print('\n\nFinishing mega_sta_lta')
+            print('Running test_binary_times...\n')
             self.test_binary_times(Y_obs, Y_pred)
         return Y_obs, Y_pred
 
@@ -130,6 +132,9 @@ class StaLta:
         try:
             # get pick times
             self.pick_times = XMLPicks(self.pick_path, self.phase).get_pick_times()
+            print(f'self.pick_path: {self.pick_path}')
+            print(f'self.pick_times: {self.pick_times}')
+            print(f'self.phase: {self.phase}')
         except TypeError:
             ic()
             # if no pick is found, set pick times to empty list
@@ -148,6 +153,8 @@ class StaLta:
                                      self.npts,
                                      self.ph_time).transform()
         if self.debug:
+            print('\n\nFinishing exc_read_transform')
+            print('Running test_binary_time...\n')
             self.test_binary_time(y_pred)
         
         return y_obs, y_pred
@@ -161,7 +168,7 @@ class StaLta:
     def test_binary_times(self, y_obs, y_pred):
         import matplotlib
         import matplotlib.pyplot as plt
-        matplotlib.use('Agg') 
+        #matplotlib.use('Agg') 
 
         plt.figure()
         plt.plot(y_obs, label='Y_obs')
@@ -172,6 +179,8 @@ class StaLta:
     def test_binary_time(self, y_pred):
         import obspy as obs
         import matplotlib.pyplot as plt
+        print('In test_binary_times')
+        
         
         st = obs.read(self.wf_path)
         tr = st[0]
@@ -249,12 +258,14 @@ class StaLta:
         """
         Run scautopick
         """
-        debug_line = ' --debug' if self.debug else ''
+        #debug_line = ' --debug' if self.debug else ''
+        debug_line = ''
         # Run scautopick
         cmd = f'scautopick -I {self.wf_path} --config-db {self.xml_exc_path}'
         cmd += f' --amplitudes 0 --inventory-db {self.inv_xml}'
         cmd += f' --playback --ep{debug_line}>{self.pick_path}'
         ic(cmd)
+        print(cmd)
         os.system(cmd)
 
     @property
@@ -268,21 +279,40 @@ class StaLta:
     def pick_path(self):
         return os.path.join(self.picks_dir, self.picks_name)
 
-
 class XMLPicks:
     xml_path: str
-    ns: dict = {'seiscomp': 'http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.11'}
+    ns: dict = {'seiscomp': 'http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.13'}
     
     def __init__(self, xml_path: str, phase: str):
         self.xml_path = xml_path
         self.phase = phase
-    
+        self.check_ns_url_match()  # Ensure ns URL matches before proceeding
+
+    def check_ns_url_match(self):
+        """
+        Check if the namespace URL in the XML file matches the expected URL in the class's ns attribute.
+        Raises a ValueError if there is a mismatch.
+        """
+        try:
+            tree = ET.parse(self.xml_path)
+            root = tree.getroot()
+            file_ns_url = root.tag[root.tag.find("{") + 1:root.tag.find("}")]
+            
+            expected_ns_url = self.ns['seiscomp']
+            if file_ns_url != expected_ns_url:
+                raise ValueError(
+                    f"Namespace URL mismatch: Expected '{expected_ns_url}', but found '{file_ns_url}' "
+                    f"in the XML file '{self.xml_path}'. Please check that the schema coincides with the expected URL."
+                )
+        except ET.ParseError as e:
+            raise ValueError(f"Failed to parse XML file '{self.xml_path}': {str(e)}")
+
     def open_dict_time(self, x):
         return x['value']
 
     def get_pick_times(self):
         """
-        Return automatic pick times from an xml file
+        Return automatic pick times from an XML file.
         """
         times = []
         root = ET.parse(self.xml_path).getroot()
@@ -292,6 +322,7 @@ class XMLPicks:
                 ic(time)
                 times.append(obspy.UTCDateTime(time))
         return times
+
 
     """def get_pick_times(self):
         ic(self.xml_path)

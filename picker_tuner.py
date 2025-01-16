@@ -16,7 +16,7 @@ ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 install()
 
 
-def picker_tuner(cursor, ti, tf, params):
+def picker_tuner(cursor, wf_cursor, ti, tf, params):
     """Download piciks data (times) and waveforms, performs sta/lta
     via seiscomp playback, performs configuration tuning using
     bayesian optimization
@@ -25,6 +25,8 @@ def picker_tuner(cursor, ti, tf, params):
     ----------
     cursor : MySQLdb database cursor
         Cursor to SQL database to perform the picks query
+    wf_cursor : MySQLdb database cursor
+        Cursor to SQL database to perform the waveform query
     stations : list
         Stations names list in format: net.sta_code.loc_code.ch, like:
         CM.URMC.00.HH*
@@ -114,8 +116,10 @@ def picker_tuner(cursor, ti, tf, params):
         assert len(ch_) == 2,\
             f"\n\tEl canal {ch_} para la estación {sta} no es válido\n|"
 
+        if not wf_cursor:
+            wf_cursor = cursor
         # searching for station coordinates
-        query_coords = Query(cursor=cursor,
+        query_coords = Query(cursor=wf_cursor,
                              query_type='station_coords',
                              dic_data={'net': net,
                                        'sta': sta,
@@ -161,7 +165,7 @@ def picker_tuner(cursor, ti, tf, params):
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()
         if len(manual_picks) < 5:
-            print(f'Less than 5 manual picks found for {station.name}')
+            print(f'Less than 5 manual picks found ({len(manual_picks)}) for {station.name}')
             not_tuned_station(station.name+' less than 5 picks found')
             continue           
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Found {len(manual_picks)} manual picks between {ti} and {tf}\n')

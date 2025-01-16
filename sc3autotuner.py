@@ -1,4 +1,4 @@
-#!/home/daniel/sc3-autotuner/venv/bin/python
+#!/home/seiscomp/sc3-autotuner/venv/bin/python
 # -*- coding: utf-8 -*-
 """
 Created on Jun 24 2021
@@ -42,13 +42,30 @@ def main():
         print('\n\n\tERROR! deb_url, tune_mode, ti, tf, sql_usr or sql_psw no defined in sc3-autotuner.inp\n\n')
         sys.exit()
     
+    try:
+        wf_sql_usr = params['wf_sql_usr']
+        wf_sql_psw = params['wf_sql_psw']
+        wf_url = params['wf_url']
+        
+        wf_db = MySQLdb.connect(host=wf_url,
+                                user=wf_sql_usr,
+                                passwd=wf_sql_psw,
+                                db='seiscomp')
+        wf_cursor = wf_db.cursor()
+    except KeyError:
+        print('\n\n\tWARNING! wf_url, wf_sql_usr or wf_sql_psw no defined in sc3-autotuner.inp using default deb_url DB to extract station data.\n\n')
+        wf_cursor = False
+    except MySQLdb.OperationalError:
+        print(f'\n\n\tERROR! Impossible to connect to seiscomp DB {wf_url} with user {wf_sql_usr} and passwd {wf_sql_psw}.\n\n') 
+    
     # user and passwd have to be a variable
     db = MySQLdb.connect(host=deb_url,
                          user=sql_usr,
                          passwd=sql_psw,
-                         db='seiscomp3')
+                         db='seiscomp')
 
     cursor = db.cursor()
+
     
     # choose in which way the program will be runned
     if tune_mode in ['picker', 'piker', 'picer', 'Picker']:
@@ -56,7 +73,7 @@ def main():
         ic(tf)
         ic(cursor)
          
-        picker_tuner(cursor, ti, tf, params)
+        picker_tuner(cursor, wf_cursor, ti, tf, params)
         
     elif tune_mode in ['associator', 'asociator', 'Associator']:
         # run assoc_tuner.py

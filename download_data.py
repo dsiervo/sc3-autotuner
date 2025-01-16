@@ -4,7 +4,7 @@ import datetime
 from dataclasses import dataclass
 import obspy
 import os
-from obspy.clients.fdsn.header import FDSNException,FDSNNoDataException
+from obspy.clients.fdsn.header import FDSNException,FDSNNoDataException,FDSNBadGatewayException
 import scipy as sc
 import csv
 import sys
@@ -67,6 +67,8 @@ class DownloadWaveform:
 
     def get_wf_stream(self):
         try:
+            ic(self.clients)
+            ic(self.station.net, self.station.name, self.station.loc, self.station.ch, self.pick.ti, self.pick.tf)
             self.st = self.clients[0].get_waveforms(network=self.station.net,
                                                 station=self.station.name,
                                                 location=self.station.loc,
@@ -74,7 +76,7 @@ class DownloadWaveform:
                                                 starttime=self.pick.ti,
                                                 endtime=self.pick.tf)
             return True
-        except (FDSNException, FDSNNoDataException):
+        except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
             try:
                 self.st = self.clients[1].get_waveforms(network=self.station.net,
                                                     station=self.station.name,
@@ -83,7 +85,7 @@ class DownloadWaveform:
                                                     starttime=self.pick.ti,
                                                     endtime=self.pick.tf)
                 return True
-            except (FDSNException, FDSNNoDataException):
+            except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
                 print('\n\n\tNo se encontraron datos')
                 print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
                 print(f'\t{self.pick.ti} - {self.pick.tf}')
