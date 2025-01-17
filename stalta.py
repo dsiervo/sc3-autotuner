@@ -14,6 +14,8 @@ from obspy.core import UTCDateTime
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
+from config_params import DEFAULT_VALUES
+
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 
 
@@ -231,6 +233,10 @@ class StaLta:
         """
         Edit the config.xml file
         """
+        # Set default values from central configuration
+        for key, value in DEFAULT_VALUES.items():
+            kwargs.setdefault(key, value)
+
         if self.phase == 'P':
             xml_filename = 'config_template_P.xml'
             kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']

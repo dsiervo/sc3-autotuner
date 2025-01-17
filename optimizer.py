@@ -13,7 +13,18 @@ from sklearn.metrics import precision_score, recall_score, roc_auc_score, fbeta_
 from stalta import StaLta
 import pandas as pd
 import os
+from config_params import (OPTIMIZATION_PARAMS, DEFAULT_VALUES, 
+                         CSV_HEADERS, PLOT_PARAMS)
 
+
+def suggest_value(trial, param_name, config):
+    """Helper function to suggest values based on parameter type"""
+    if config['type'] == 'int':
+        return trial.suggest_int(param_name, config['min'], config['max'], step=config['step'])
+    elif config['type'] == 'float':
+        return trial.suggest_float(param_name, config['min'], config['max'], step=config['step'])
+    else:
+        raise ValueError(f"Unknown parameter type: {config['type']}")
 
 def objetive_p(trial, metric='f1'):
     """Función objetivo a minimizar"""
@@ -26,16 +37,10 @@ def objetive_p(trial, metric='f1'):
                }
     
     space = {
-        'p_sta': trial.suggest_float('p_sta', 0.1, 3, step=0.01),
-        'p_sta_width': trial.suggest_float('p_sta_width', 1, 100, step=0.01),
-        'p_fmin': trial.suggest_int('p_fmin', 1, 10),
-        'p_fwidth': trial.suggest_int('p_fwidth', 1, 10),
-        'p_snr': trial.suggest_int('p_snr', 1, 4),
-        'aic_fmin': trial.suggest_int('aic_fmin', 1, 10),
-        'aic_fwidth': trial.suggest_int('aic_fwidth', 1, 10),
-        'trig_on': trial.suggest_float('trig_on', 2, 15, step=0.01),
-        'p_timecorr': 0.0  # Fixed default value
+        param: suggest_value(trial, param, config)
+        for param, config in OPTIMIZATION_PARAMS['P'].items()
     }
+    space.update({'p_timecorr': DEFAULT_VALUES['p_timecorr']})
     
     stalta = StaLta()
     y_obs, y_pred = stalta.mega_sta_lta(**space)
@@ -62,10 +67,8 @@ def objective_s(trial, metric='f1'):
                }
     
     space = {
-        's_snr': trial.suggest_float('s_snr', 1, 4, step=0.01),
-        's_fmin': 0.8,  # Fixed default value
-        's_fmax': 10.0, # Fixed default value
-        's_fwidth': 0  # Not used anymore but needed for compatibility
+        param: suggest_value(trial, param, config)
+        for param, config in OPTIMIZATION_PARAMS['S'].items()
     }
     
     stalta = StaLta()
@@ -108,30 +111,24 @@ class CSVData:
     
     @property
     def header(self):
-        if self.phase == 'P':
-            line = ','.join(['net.sta', 'p_sta', 'p_sta_width', 'p_fmin',
-                              'p_fwidth', 'aic_fmin', 'aic_fwidth', 'p_timecorr',
-                              'p_snr', 'trig_on', 'best_f1\n'])
-            return line
-        elif self.phase == 'S':
-            return 'net.sta,s_fmin,s_fwidth,s_snr,best_f1\n'
+        return ','.join(CSV_HEADERS[self.phase]) + '\n'
     
     @property
     def values(self):
         if self.phase == 'P':
             # Add default values for parameters that are no longer optimized
             params = self.best_params.copy()
-            params.setdefault('p_timecorr', 0.0)  # Add default if missing
-            
-            line = f'{self.net}.{self.sta},{params["p_sta"]},'
-            line += f'{params["p_sta_width"]},{params["p_fmin"]},'
-            line += f'{params["p_fwidth"]},{params["aic_fmin"]},'
-            line += f'{params["aic_fwidth"]},{params["p_timecorr"]},'
-            line += f'{params["p_snr"]},{params["trig_on"]},{params["best_f1"]}\n'
-            return line
+            for key, value in DEFAULT_VALUES.items():
+                params.setdefault(key, value)
+            # Handle headers without splitting if no '.' is present
+            return ','.join(str(params.get(col.split('.')[-1] if '.' in col else col, '')) 
+                          for col in CSV_HEADERS[self.phase]) + '\n'
         elif self.phase == 'S':
-            # Use default values for S-phase parameters
-            return f'{self.net}.{self.sta},0.8,10,{self.best_params["s_snr"]},{self.best_params["best_f1"]}\n'
+            return (f'{self.net}.{self.sta},'
+                    f'{self.best_params["s_fmin"]},'
+                    f'{self.best_params["s_fwidth"]},'
+                    f'{self.best_params["s_snr"]},'
+                    f'{self.best_params["best_f1"]}\n')
 
 
 class PlotWrite:
@@ -153,16 +150,15 @@ class PlotWrite:
 
     def plot_and_write(self):
         fig_hist = optuna.visualization.plot_optimization_history(self.study)
-        params = {'P': ['p_sta', 'p_sta_width', 'p_fmin', 'p_fwidth', 'trig_on'],
-                'S': ['s_snr']}  # Only include s_snr for S-phase since other params are fixed
+        params = PLOT_PARAMS[self.phase]
         
         #fig_cont = optuna.visualization.plot_contour(study,
         #                                             params=['p_sta', 'p_sta_width'])
         fig_slice = optuna.visualization.plot_slice(self.study,
-                                                    params=params[self.phase])
+                                                    params=params)
         fig_parall = optuna.visualization\
                     .plot_parallel_coordinate(self.study,
-                                            params=params[self.phase])
+                                            params=params)
 
         print(f'\n\n\033[92m{self.net}.{self.sta} - {self.phase}\033[0m')
         print('Number of finished trials: {}'.format(len(self.study.trials)))
@@ -271,17 +267,14 @@ class PlotWrite:
         return df[df['net.sta'] == f'{self.net}.{self.sta}'].sort_values(by='best_f1', ascending=False).iloc[0].to_dict()
 
     def fix_params(self, params):
-        # rename params to match the station_NET_template config file
-        # p_sta_width, p_fwidth, aic_fwidth and s_fwidth
-        #rename_dict = {'p_sta_width': 'p_lta', 'p_fwidth': 'p_fmax', 'aic_fwidth': 'aic_fmax', 's_fwidth': 's_fmax'}
+        # Add all default values
+        for key, value in DEFAULT_VALUES.items():
+            params.setdefault(key, value)
         
+        # Calculate derived parameters
         params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
         params['p_lta'] = params['p_sta'] + params['p_sta_width']
         params['aic_fmax'] = params['aic_fmin'] + params['aic_fwidth']
         params['s_fmax'] = params['s_fmin'] + params['s_fwidth']
-
-        """for key in rename_dict:
-            if key in params:
-                params[rename_dict[key]] = params.pop(key)"""
         
         return params

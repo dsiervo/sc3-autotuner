@@ -21,7 +21,7 @@
       </parameter>
       <parameter publicID="Parameter/20210721213024.33273.11">
         <name>picker.AIC.filter</name>
-        <value>ITAPER(1)>>BW(4,{aic_fmin},{aic_fmax})</value>
+        <value>ITAPER(1)>>BW_HP(3,2)</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332747.12">
         <name>picker.AIC.minSNR</name>
