@@ -30,16 +30,12 @@ def objetive_p(trial, metric='f1'):
         'p_sta_width': trial.suggest_float('p_sta_width', 1, 100, step=0.01),
         'p_fmin': trial.suggest_int('p_fmin', 1, 10),
         'p_fwidth': trial.suggest_int('p_fwidth', 1, 10),
-        'p_timecorr': trial.suggest_float('p_timecorr', 0, 1, step=0.01),
         'p_snr': trial.suggest_int('p_snr', 1, 4),
         'aic_fmin': trial.suggest_int('aic_fmin', 1, 10),
         'aic_fwidth': trial.suggest_int('aic_fwidth', 1, 10),
-        'trig_on': trial.suggest_float('trig_on', 2, 15, step=0.01)
-           }
-
-    """stalta_params = {'p_sta': 0.1, 'p_lta': 5.7, 'p_fmin': 2,
-                     'p_fmax': 8, 'p_timecorr': 0.25, 'p_snr': 3,
-                     'aic_fmin': 2, 'aic_fmax': 8, 'trig_on': 5}"""
+        'trig_on': trial.suggest_float('trig_on', 2, 15, step=0.01),
+        'p_timecorr': 0.0  # Fixed default value
+    }
     
     stalta = StaLta()
     y_obs, y_pred = stalta.mega_sta_lta(**space)
@@ -66,14 +62,11 @@ def objective_s(trial, metric='f1'):
                }
     
     space = {
-        's_fmin': trial.suggest_int('s_fmin', 1, 10),
-        's_fwidth': trial.suggest_int('s_fwidth', 1, 10),
-        's_snr': trial.suggest_float('s_snr', 1, 4, step=0.01)
-           }
-
-    """stalta_params = {'p_sta': 0.1, 'p_lta': 5.7, 'p_fmin': 2,
-                     'p_fmax': 8, 'p_timecorr': 0.25, 'p_snr': 3,
-                     'aic_fmin': 2, 'aic_fmax': 8, 'trig_on': 5}"""
+        's_snr': trial.suggest_float('s_snr', 1, 4, step=0.01),
+        's_fmin': 0.8,  # Fixed default value
+        's_fmax': 10.0, # Fixed default value
+        's_fwidth': 0  # Not used anymore but needed for compatibility
+    }
     
     stalta = StaLta()
     space.update(stalta.best_p_params)
@@ -126,14 +119,19 @@ class CSVData:
     @property
     def values(self):
         if self.phase == 'P':
-            line = f'{self.net}.{self.sta},{self.best_params["p_sta"]},'
-            line += f'{self.best_params["p_sta_width"]},{self.best_params["p_fmin"]},'
-            line += f'{self.best_params["p_fwidth"]},{self.best_params["aic_fmin"]},'
-            line += f'{self.best_params["aic_fwidth"]},{self.best_params["p_timecorr"]},'
-            line += f'{self.best_params["p_snr"]},{self.best_params["trig_on"]},{self.best_params["best_f1"]}\n'
+            # Add default values for parameters that are no longer optimized
+            params = self.best_params.copy()
+            params.setdefault('p_timecorr', 0.0)  # Add default if missing
+            
+            line = f'{self.net}.{self.sta},{params["p_sta"]},'
+            line += f'{params["p_sta_width"]},{params["p_fmin"]},'
+            line += f'{params["p_fwidth"]},{params["aic_fmin"]},'
+            line += f'{params["aic_fwidth"]},{params["p_timecorr"]},'
+            line += f'{params["p_snr"]},{params["trig_on"]},{params["best_f1"]}\n'
             return line
         elif self.phase == 'S':
-            return f'{self.net}.{self.sta},{self.best_params["s_fmin"]},{self.best_params["s_fwidth"]},{self.best_params["s_snr"]},{self.best_params["best_f1"]}\n'
+            # Use default values for S-phase parameters
+            return f'{self.net}.{self.sta},0.8,10,{self.best_params["s_snr"]},{self.best_params["best_f1"]}\n'
 
 
 class PlotWrite:
@@ -156,7 +154,7 @@ class PlotWrite:
     def plot_and_write(self):
         fig_hist = optuna.visualization.plot_optimization_history(self.study)
         params = {'P': ['p_sta', 'p_sta_width', 'p_fmin', 'p_fwidth', 'trig_on'],
-                'S': ['s_fmin', 's_fwidth', 's_snr']}
+                'S': ['s_snr']}  # Only include s_snr for S-phase since other params are fixed
         
         #fig_cont = optuna.visualization.plot_contour(study,
         #                                             params=['p_sta', 'p_sta_width'])

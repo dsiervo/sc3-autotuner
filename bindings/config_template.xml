@@ -29,7 +29,7 @@
       </parameter>
       <parameter publicID="Parameter/20210721213024.332761.13">
         <name>spicker.AIC.filter</name>
-        <value>ITAPER(1)>>BW(4,{s_fmin},{s_fmax})</value>
+        <value>ITAPER(1)>>BW(4,0.8,10)</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332774.14">
         <name>spicker.AIC.step</name>

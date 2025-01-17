@@ -9,7 +9,7 @@ detecStream = {ch}
 detecLocid = {loc}
 
 # Configures the filter used to compute the L2.
-spicker.AIC.filter = ITAPER(1)>>BW(4,{s_fmin},{s_fmax})
+spicker.AIC.filter = ITAPER(1)>>BW(4,0.8,10)
 
 # Defines the mininum SNR as returned from AIC.
 spicker.AIC.minSNR = {s_snr:.2f}
@@ -34,4 +34,4 @@ trigOn = {trig_on:.2f}
 trigOff = 1
 
 # The time correction applied to a detected pick.
-timeCorr = {p_timecorr:.2f}
+timeCorr = 0.0
