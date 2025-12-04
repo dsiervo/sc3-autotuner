@@ -285,7 +285,9 @@ class Query:
     
     @property
     def query(self):
-        return self.query_str.format(**self.dic_data)
+        query = self.query_str.format(**self.dic_data)
+        ic(query)
+        return query
     
     def execute_query(self):
         self.cursor.execute(self.query)

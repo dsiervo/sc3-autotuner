@@ -29,7 +29,7 @@ def objetive_p(trial, metric='f1'):
         'p_sta': trial.suggest_float('p_sta', 0.1, 3, step=0.01),
         'p_sta_width': trial.suggest_float('p_sta_width', 1, 100, step=0.01),
         'p_fmin': trial.suggest_int('p_fmin', 1, 10),
-        'p_fwidth': trial.suggest_int('p_fwidth', 1, 10),
+        'p_fwidth': trial.suggest_int('p_fwidth', 1, 30),
         'p_timecorr': trial.suggest_float('p_timecorr', 0, 1, step=0.01),
         'p_snr': trial.suggest_int('p_snr', 1, 4),
         'aic_fmin': trial.suggest_int('aic_fmin', 1, 10),
