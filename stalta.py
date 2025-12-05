@@ -14,7 +14,7 @@ from obspy.core import UTCDateTime
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
-from config_params import DEFAULT_VALUES
+from config_params import DEFAULT_VALUES, render_config_param_templates
 
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 
@@ -214,7 +214,11 @@ class StaLta:
         Compute sta/lta for a single line
         """
         fields = line.split(',')
-        self.ph_time = [obspy.UTCDateTime(fields[1].strip("\n\r"))]
+        pick_value = fields[1].strip("\n\r")
+        if pick_value in ['', 'NO_PICK']:
+            self.ph_time = []
+        else:
+            self.ph_time = [obspy.UTCDateTime(pick_value)]
         # get the initial waveform time
         self.wf_start_time = obspy.UTCDateTime(fields[2].strip("\n\r"))
         # get the sample rate
@@ -248,6 +252,9 @@ class StaLta:
             kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
             kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
             kwargs['s_fmax'] = kwargs['s_fmin'] + kwargs['s_fwidth']
+
+        # Precompute config parameter strings so templates can consume them
+        kwargs.update(render_config_param_templates(kwargs))
     
         ic(xml_filename)
         # xml path for the template

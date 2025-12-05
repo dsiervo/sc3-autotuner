@@ -21,6 +21,15 @@ def main():
     params = {'debug': False, 'max_picks': 50, 'n_trials': 100}
     
     params_new = read_params()
+
+    download_noise_raw = params_new.get('download_noise_p')
+    if download_noise_raw is None:
+        download_noise_flag = False
+        print("\n\tParameter 'download_noise_p' not set. Using default value False for P-phase noise downloads.\n")
+    else:
+        download_noise_flag = download_noise_raw.lower() in ['true', '1', 'yes']
+        print(f"\n\tParameter 'download_noise_p' set to {download_noise_flag} for P-phase noise downloads.\n")
+    params_new['download_noise_p'] = download_noise_flag
     
     # update params
     params.update(params_new)

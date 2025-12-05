@@ -88,6 +88,10 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
     
     # define if the program is running in debug mode
     debug = params['debug']
+
+    download_noise_p = params.get('download_noise_p', False)
+    if isinstance(download_noise_p, str):
+        download_noise_p = download_noise_p.lower() in ['true', '1', 'yes']
     
     try:
         n_trials = int(params['n_trials'])
@@ -189,7 +193,8 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         # store manual picks in csv file
         picks_file = os.path.join(station.data_dir, f'{station.name}_manual_picks.csv')
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Downloading waveforms\n')
-        times_paths = waveform_downloader(clients, station, manual_picks, DT)
+        times_paths = waveform_downloader(clients, station, manual_picks, DT,
+                                          download_noise_p)
 
         # if the program couldn't download any waveform for the current station
         # continue with the following one
@@ -233,4 +238,3 @@ def write_current_exc(times_paths, picks_dir, inv_xml, debug,
     f.write(f"loc = {loc}\n")
     f.write(f"sta = {sta}\n")
     f.close()
-
