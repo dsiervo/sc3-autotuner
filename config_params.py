@@ -4,7 +4,7 @@ OPTIMIZATION_PARAMS = {
         'p_sta': {'min': 0.1, 'max': 3, 'step': 0.01, 'type': 'float'},
         'p_sta_width': {'min': 1, 'max': 100, 'step': 0.01, 'type': 'float'},
         'p_fmin': {'min': 1, 'max': 10, 'step': 1, 'type': 'int'},
-        'p_fwidth': {'min': 1, 'max': 10, 'step': 1, 'type': 'int'},
+        'p_fwidth': {'min': 1, 'max': 30, 'step': 1, 'type': 'int'},
         'p_snr': {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
         'trig_on': {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
     },

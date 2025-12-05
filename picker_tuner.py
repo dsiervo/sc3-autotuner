@@ -60,6 +60,22 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         print('\033[0m', end='\n\n\n')
         radius = 100       
 
+    try:
+        # defining minimum magnitude for picks search
+        min_mag = float(params['min_mag'])
+    except KeyError:
+        print('\033[91m\n\n\n\n\t', end='')
+        print(f"You did not define a min_mag parameter in the sc3-autuner.inp file")
+        print(f"\tAsuming 1.2")
+        print('\033[0m', end='\n\n\n')
+        min_mag = 1.2
+    except ValueError:
+        print('\033[91m\n\n\n\n\t', end='')
+        print(f"Wrong min_mag value given")
+        print(f"\tAsuming 1.2")
+        print('\033[0m', end='\n\n\n')
+        min_mag = 1.2
+
     # seiscomp3 inventory in xml format
     inv_xml = params['inv_xml']
     # check if inv_xml file exists
@@ -161,6 +177,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                             dic_data={'sta': sta, 'net': net,
                                       'sta_lat': lat, 'sta_lon': lon,
                                       'ti': ti, 'tf': tf,
+                                      'min_mag': min_mag,
                                       'radius': radius,
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()
@@ -169,7 +186,8 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
             not_tuned_station(station.name+' less than 5 picks found')
             continue           
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Found {len(manual_picks)} manual picks between {ti} and {tf}\n')
-
+        # store manual picks in csv file
+        picks_file = os.path.join(station.data_dir, f'{station.name}_manual_picks.csv')
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Downloading waveforms\n')
         times_paths = waveform_downloader(clients, station, manual_picks, DT)
 

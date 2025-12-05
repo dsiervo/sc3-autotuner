@@ -120,15 +120,22 @@ class CSVData:
             params = self.best_params.copy()
             for key, value in DEFAULT_VALUES.items():
                 params.setdefault(key, value)
-            # Handle headers without splitting if no '.' is present
-            return ','.join(str(params.get(col.split('.')[-1] if '.' in col else col, '')) 
-                          for col in CSV_HEADERS[self.phase]) + '\n'
+            return ','.join(
+                str(self._value_for_column(col, params))
+                for col in CSV_HEADERS[self.phase]
+            ) + '\n'
         elif self.phase == 'S':
             return (f'{self.net}.{self.sta},'
                     f'{self.best_params["s_fmin"]},'
                     f'{self.best_params["s_fwidth"]},'
                     f'{self.best_params["s_snr"]},'
                     f'{self.best_params["best_f1"]}\n')
+
+    def _value_for_column(self, column, params):
+        if column == 'net.sta':
+            return f'{self.net}.{self.sta}'
+        key = column.split('.')[-1] if '.' in column else column
+        return params.get(key, '')
 
 
 class PlotWrite:

@@ -134,9 +134,9 @@ class StaLta:
         try:
             # get pick times
             self.pick_times = XMLPicks(self.pick_path, self.phase).get_pick_times()
-            print(f'self.pick_path: {self.pick_path}')
-            print(f'self.pick_times: {self.pick_times}')
-            print(f'self.phase: {self.phase}')
+            # print(f'self.pick_path: {self.pick_path}')
+            # print(f'self.pick_times: {self.pick_times}')
+            # print(f'self.phase: {self.phase}')
         except TypeError:
             ic()
             # if no pick is found, set pick times to empty list
@@ -271,7 +271,7 @@ class StaLta:
         cmd += f' --amplitudes 0 --inventory-db {self.inv_xml}'
         cmd += f' --playback --ep{debug_line}>{self.pick_path}'
         ic(cmd)
-        print(cmd)
+        #print(cmd)
         os.system(cmd)
 
     @property
