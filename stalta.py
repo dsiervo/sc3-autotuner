@@ -243,14 +243,15 @@ class StaLta:
 
         if self.phase == 'P':
             xml_filename = 'config_template_P.xml'
-            kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
-            kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
-            kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
         else:
             xml_filename = 'config_template.xml'
+
+        if 'p_fmax' not in kwargs and 'p_fwidth' in kwargs:
             kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
+        if 'p_lta' not in kwargs and 'p_sta_width' in kwargs:
             kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
-            kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
+        kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
+        if self.phase != 'P' and 's_fmax' not in kwargs and 's_fwidth' in kwargs:
             kwargs['s_fmax'] = kwargs['s_fmin'] + kwargs['s_fwidth']
 
         # Precompute config parameter strings so templates can consume them

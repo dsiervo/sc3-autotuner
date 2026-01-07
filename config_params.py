@@ -1,27 +1,27 @@
 # Optimization ranges, steps and types for parameters
 import string
 p_sta_name = 'p_sta'
-p_sta_width_name = 'p_sta_width'
+p_lta_name = 'p_lta'
 p_fmin_name = 'p_fmin'
-p_fwidth_name = 'p_fwidth'
+p_fmax_name = 'p_fmax'
 p_snr_name = 'p_snr'
 trig_on_name = 'trig_on'
 s_snr_name = 's_snr'
 s_fmin_name = 's_fmin'
-s_fwidth_name = 's_fwidth'
+s_fmax_name = 's_fmax'
 OPTIMIZATION_PARAMS = {
     'P': {
         p_sta_name: {'min': 0.1, 'max': 3, 'step': 0.01, 'type': 'float'},
-        p_sta_width_name: {'min': 1, 'max': 100, 'step': 0.01, 'type': 'float'},
+        p_lta_name: {'min': 1.1, 'max': 103, 'step': 0.01, 'type': 'float'},
         p_fmin_name: {'min': 1, 'max': 10, 'step': 1, 'type': 'int'},
-        p_fwidth_name: {'min': 1, 'max': 30, 'step': 1, 'type': 'int'},
+        p_fmax_name: {'min': 2, 'max': 40, 'step': 1, 'type': 'int'},
         p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
         trig_on_name: {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
     },
     'S': {
         s_snr_name: {'min': 1, 'max': 4, 'step': 0.01, 'type': 'float'},
         s_fmin_name: {'min': 0.1, 'max': 10, 'step': 0.1, 'type': 'float'},
-        s_fwidth_name: {'min': 1, 'max': 15, 'step': 0.1, 'type': 'float'}
+        s_fmax_name: {'min': 1.1, 'max': 25, 'step': 0.1, 'type': 'float'}
     }
 }
 
@@ -52,15 +52,15 @@ CONFIG_PARAM_TEMPLATES = {
 
 # CSV file headers
 CSV_HEADERS = {
-    'P': ['net.sta', p_sta_name, p_sta_width_name, p_fmin_name, p_fwidth_name,
+    'P': ['net.sta', p_sta_name, p_lta_name, p_fmin_name, p_fmax_name,
           p_snr_name, trig_on_name, 'best_f1'],
-    'S': ['net.sta', s_snr_name, s_fmin_name, s_fwidth_name, 'best_f1']
+    'S': ['net.sta', s_snr_name, s_fmin_name, s_fmax_name, 'best_f1']
 }
 
 # Parameters to plot in optimization visualizations
 PLOT_PARAMS = {
-    'P': [p_sta_name, p_sta_width_name, p_fmin_name, p_fwidth_name, p_snr_name, trig_on_name],
-    'S': [s_snr_name, s_fmin_name, s_fwidth_name]
+    'P': [p_sta_name, p_lta_name, p_fmin_name, p_fmax_name, p_snr_name, trig_on_name],
+    'S': [s_snr_name, s_fmin_name, s_fmax_name]
 }
 
 

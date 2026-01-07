@@ -40,6 +40,8 @@ def objetive_p(trial, metric='f1'):
         param: suggest_value(trial, param, config)
         for param, config in OPTIMIZATION_PARAMS['P'].items()
     }
+    if space['p_lta'] <= space['p_sta'] or space['p_fmax'] <= space['p_fmin']:
+        return 0.0
     space.update({'p_timecorr': DEFAULT_VALUES['p_timecorr']})
     
     stalta = StaLta()
@@ -70,6 +72,8 @@ def objective_s(trial, metric='f1'):
         param: suggest_value(trial, param, config)
         for param, config in OPTIMIZATION_PARAMS['S'].items()
     }
+    if space['s_fmax'] <= space['s_fmin']:
+        return 0.0
     
     stalta = StaLta()
     space.update(stalta.best_p_params)
@@ -150,7 +154,7 @@ class PlotWrite:
         params = PLOT_PARAMS[self.phase]
         
         #fig_cont = optuna.visualization.plot_contour(study,
-        #                                             params=['p_sta', 'p_sta_width'])
+        #                                             params=['p_sta', 'p_lta'])
         fig_slice = optuna.visualization.plot_slice(self.study,
                                                     params=params)
         fig_parall = optuna.visualization\
@@ -268,11 +272,14 @@ class PlotWrite:
         for key, value in DEFAULT_VALUES.items():
             params.setdefault(key, value)
         
-        # Calculate derived parameters
-        params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
-        params['p_lta'] = params['p_sta'] + params['p_sta_width']
+        # Calculate derived parameters if needed for backwards compatibility.
+        if 'p_fmax' not in params and 'p_fwidth' in params:
+            params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
+        if 'p_lta' not in params and 'p_sta_width' in params:
+            params['p_lta'] = params['p_sta'] + params['p_sta_width']
         params['aic_fmax'] = params['aic_fmin'] + params['aic_fwidth']
-        params['s_fmax'] = params['s_fmin'] + params['s_fwidth']
+        if 's_fmax' not in params and 's_fwidth' in params:
+            params['s_fmax'] = params['s_fmin'] + params['s_fwidth']
 
         # Expand template-ready values for configuration files
         params.update(render_config_param_templates(params))

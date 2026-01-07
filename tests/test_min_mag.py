@@ -180,15 +180,15 @@ def test_picker_tuner_uses_provided_min_mag(tmp_path):
 
 
 def test_optimizer_config_allows_extended_bandwidth():
-    assert OPTIMIZATION_PARAMS['P']['p_fwidth']['max'] == 30
+    assert OPTIMIZATION_PARAMS['P']['p_fmax']['max'] == 40
 
 
 def test_csvdata_persists_station_identifier():
     best_params = {
         'p_sta': 0.5,
-        'p_sta_width': 4.0,
+        'p_lta': 4.5,
         'p_fmin': 2,
-        'p_fwidth': 5,
+        'p_fmax': 7,
         'p_snr': 2,
         'trig_on': 3.0,
         'aic_fmin': 1,
