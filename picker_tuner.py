@@ -37,44 +37,43 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         Final time to search for thet picks that will be used in the
         bayesian optimization. Format: yyyy-MM-dd hh:mm:ss
     """
-    
+    def parse_float_param(param_name, default_value, missing_message, invalid_message):
+        try:
+            return float(params[param_name])
+        except KeyError:
+            print('\033[91m\n\n\n\n\t', end='')
+            print(missing_message)
+            print(f"\tAsuming {default_value}")
+            print('\033[0m', end='\n\n\n')
+            return default_value
+        except ValueError:
+            print('\033[91m\n\n\n\n\t', end='')
+            print(invalid_message)
+            print(f"\tAsuming {default_value}")
+            print('\033[0m', end='\n\n\n')
+            return default_value
+
     # time in seconds after and before pick for waveform extraction
     DT = 100
     
     # current working directory (directory from where the program is running)
     CWD = os.getcwd()
 
-    try:
-        # defining radius in km for picks search
-        radius = float(params['radius'])
-    except KeyError:
-        print('\033[91m\n\n\n\n\t', end='')
-        print(f"You did not define a radius (km) parameter in the sc3-autuner.inp file")
-        print(f"\tAsuming 100")
-        print('\033[0m', end='\n\n\n')
-        radius = 100
-    except ValueError:
-        print('\033[91m\n\n\n\n\t', end='')
-        print(f"Wrong radius value given")
-        print(f"\tAsuming 100")
-        print('\033[0m', end='\n\n\n')
-        radius = 100       
+    # defining radius in km for picks search
+    radius = parse_float_param(
+        'radius',
+        100,
+        "You did not define a radius (km) parameter in the sc3-autuner.inp file",
+        "Wrong radius value given",
+    )
 
-    try:
-        # defining minimum magnitude for picks search
-        min_mag = float(params['min_mag'])
-    except KeyError:
-        print('\033[91m\n\n\n\n\t', end='')
-        print(f"You did not define a min_mag parameter in the sc3-autuner.inp file")
-        print(f"\tAsuming 1.2")
-        print('\033[0m', end='\n\n\n')
-        min_mag = 1.2
-    except ValueError:
-        print('\033[91m\n\n\n\n\t', end='')
-        print(f"Wrong min_mag value given")
-        print(f"\tAsuming 1.2")
-        print('\033[0m', end='\n\n\n')
-        min_mag = 1.2
+    # defining minimum magnitude for picks search
+    min_mag = parse_float_param(
+        'min_mag',
+        1.2,
+        "You did not define a min_mag parameter in the sc3-autuner.inp file",
+        "Wrong min_mag value given",
+    )
 
     # seiscomp3 inventory in xml format
     inv_xml = params['inv_xml']
@@ -114,6 +113,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         ic(clients)
     except KeyError:
         print('\n\n\t ERROR! fdsn_ip not defined in sc3-autotuner.inp')
+        sys.exit()
 
     # creating data directory
     dir_maker = DirectoryCreator()

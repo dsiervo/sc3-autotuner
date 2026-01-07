@@ -1,4 +1,3 @@
-from matplotlib.pyplot import phase_spectrum
 import numpy as np
 import datetime
 from dataclasses import dataclass
@@ -7,7 +6,9 @@ import os
 from obspy.clients.fdsn.header import FDSNException,FDSNNoDataException,FDSNBadGatewayException
 import scipy as sc
 import csv
-import sys
+from icecream import ic
+
+ic.configureOutput(prefix='debug| ')
 
 
 @dataclass
@@ -66,30 +67,23 @@ class DownloadWaveform:
         return os.path.split(self.data_dir)[0]
 
     def get_wf_stream(self):
-        try:
-            ic(self.clients)
-            ic(self.station.net, self.station.name, self.station.loc, self.station.ch, self.pick.ti, self.pick.tf)
-            self.st = self.clients[0].get_waveforms(network=self.station.net,
-                                                station=self.station.name,
-                                                location=self.station.loc,
-                                                channel=self.station.ch+'*',
-                                                starttime=self.pick.ti,
-                                                endtime=self.pick.tf)
-            return True
-        except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
+        ic(self.clients)
+        ic(self.station.net, self.station.name, self.station.loc, self.station.ch, self.pick.ti, self.pick.tf)
+        for client in self.clients:
             try:
-                self.st = self.clients[1].get_waveforms(network=self.station.net,
-                                                    station=self.station.name,
-                                                    location=self.station.loc,
-                                                    channel=self.station.ch+'*',
-                                                    starttime=self.pick.ti,
-                                                    endtime=self.pick.tf)
+                self.st = client.get_waveforms(network=self.station.net,
+                                               station=self.station.name,
+                                               location=self.station.loc,
+                                               channel=self.station.ch+'*',
+                                               starttime=self.pick.ti,
+                                               endtime=self.pick.tf)
                 return True
             except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
-                print('\n\n\tNo se encontraron datos')
-                print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
-                print(f'\t{self.pick.ti} - {self.pick.tf}')
-                return False
+                continue
+        print('\n\n\tNo se encontraron datos')
+        print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
+        print(f'\t{self.pick.ti} - {self.pick.tf}')
+        return False
     
     def trim_and_merge(self):
         self.st.trim(self.pick.ti, self.pick.tf)
@@ -135,8 +129,9 @@ class PurgeSNR:
     
     def phase_point(self):
         """Compute the data points for an enter interval"""
-        tr_i = self.t - self.ti - self.unc
-        tr_f = self.t - self.tf + self.unc
+        pick_offset = self.t - self.ti
+        tr_i = pick_offset - self.unc
+        tr_f = pick_offset + self.unc
         
         npi = int(tr_i * self.sampling_rate)
         npf = int(tr_f * self.sampling_rate)

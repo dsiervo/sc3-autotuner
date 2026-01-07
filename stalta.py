@@ -243,16 +243,17 @@ class StaLta:
 
         if self.phase == 'P':
             xml_filename = 'config_template_P.xml'
+            required_keys = ['p_sta', 'p_lta', 'p_fmin', 'p_fmax', 'p_snr', 'trig_on']
         else:
             xml_filename = 'config_template.xml'
+            required_keys = ['p_sta', 'p_lta', 'p_fmin', 'p_fmax', 'p_snr', 'trig_on',
+                             's_snr', 's_fmin', 's_fmax']
 
-        if 'p_fmax' not in kwargs and 'p_fwidth' in kwargs:
-            kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
-        if 'p_lta' not in kwargs and 'p_sta_width' in kwargs:
-            kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
+        missing = [key for key in required_keys if key not in kwargs]
+        if missing:
+            raise KeyError(f"Missing required parameters for {self.phase} configuration: {', '.join(missing)}")
+
         kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
-        if self.phase != 'P' and 's_fmax' not in kwargs and 's_fwidth' in kwargs:
-            kwargs['s_fmax'] = kwargs['s_fmin'] + kwargs['s_fwidth']
 
         # Precompute config parameter strings so templates can consume them
         kwargs.update(render_config_param_templates(kwargs))

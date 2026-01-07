@@ -30,7 +30,7 @@ DEFAULT_VALUES = {
     'p_timecorr': 0.0,
     'aic_fmin': 1,
     'aic_fwidth': 0,
-    'picker_aic_filter': 'ITAPER(1)>>BW_HP(3,2)'
+    'picker_aic_filter': 'BW(4,{p_fmin},{p_fmax})'
 }
 
 # Mapping from SeisComP configuration parameter names to the template values
@@ -75,16 +75,24 @@ def render_config_param_templates(params: dict) -> dict:
     skipped.
     """
     rendered = {}
+    resolved_params = params.copy()
     formatter = string.Formatter()
+
+    for key, value in params.items():
+        if isinstance(value, str) and '{' in value and '}' in value:
+            try:
+                resolved_params[key] = value.format(**params)
+            except KeyError:
+                pass
 
     for param_name, template in CONFIG_PARAM_TEMPLATES.items():
         required_fields = {
             field for _, field, _, _ in formatter.parse(template) if field
         }
-        if not required_fields.issubset(params.keys()):
+        if not required_fields.issubset(resolved_params.keys()):
             continue
 
-        value = template.format(**params)
+        value = template.format(**resolved_params)
         rendered[param_name] = value
 
         safe_key = param_name.replace('.', '_').replace('-', '_')
