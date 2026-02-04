@@ -13,6 +13,14 @@ from icecream import ic
 ic.configureOutput(prefix='debug| ')
 
 
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).lower() in ['true', '1', 'yes']
+
+
 def main():
     """Read parmas, choose in wich modules will be
     tuned, and run it
@@ -25,16 +33,16 @@ def main():
     download_noise_raw = params_new.get('download_noise_p')
     if download_noise_raw is None:
         download_noise_flag = False
-        print("\n\tParameter 'download_noise_p' not set. Using default value False for P-phase noise downloads.\n")
+        print(f"\n\tParameter 'download_noise_p' not set. Using default value False for P-phase noise downloads: {download_noise_flag}\n")
     else:
-        download_noise_flag = download_noise_raw.lower() in ['true', '1', 'yes']
+        download_noise_flag = parse_bool(download_noise_raw)
         print(f"\n\tParameter 'download_noise_p' set to {download_noise_flag} for P-phase noise downloads.\n")
     params_new['download_noise_p'] = download_noise_flag
     
     # update params
     params.update(params_new)
     
-    params['debug'] = True if params['debug'] in ['true', 'True', 'TRUE'] else False
+    params['debug'] = parse_bool(params.get('debug', False))
     
     if not params['debug']:
         ic.disable()
@@ -65,7 +73,8 @@ def main():
         print('\n\n\tWARNING! wf_url, wf_sql_usr or wf_sql_psw no defined in sc3-autotuner.inp using default deb_url DB to extract station data.\n\n')
         wf_cursor = False
     except MySQLdb.OperationalError:
-        print(f'\n\n\tERROR! Impossible to connect to seiscomp DB {wf_url} with user {wf_sql_usr} and passwd {wf_sql_psw}.\n\n') 
+        print(f'\n\n\tERROR! Impossible to connect to seiscomp DB {wf_url} with user {wf_sql_usr} and passwd {wf_sql_psw}.\n\n')
+        wf_cursor = False
     
     # user and passwd have to be a variable
     db = MySQLdb.connect(host=deb_url,
@@ -103,14 +112,13 @@ def get_param(param_name, params):
 
 
 def read_params(par_file='sc3-autotuner.inp'):
-    lines = open(par_file).readlines()
     par_dic = {}
-    for line in lines:
-        if line[0] == '#' or line.strip('\n').strip() == '':
-            continue
-        else:
+    with open(par_file) as f:
+        for line in f:
+            if line[0] == '#' or line.strip('\n').strip() == '':
+                continue
             l = line.strip('\n').strip()
-            key, value = l.split('=')
+            key, value = l.split('=', 1)
             par_dic[key.strip()] = value.strip()
     return par_dic
 

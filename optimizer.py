@@ -13,8 +13,16 @@ from sklearn.metrics import precision_score, recall_score, roc_auc_score, fbeta_
 from stalta import StaLta
 import pandas as pd
 import os
+from icecream import ic
 from config_params import (OPTIMIZATION_PARAMS, DEFAULT_VALUES, 
                          CSV_HEADERS, PLOT_PARAMS, render_config_param_templates)
+
+METRICS = {
+    'f': fbeta_score,
+    'pr': precision_score,
+    're': recall_score,
+    'roc': roc_auc_score,
+}
 
 
 def suggest_value(trial, param_name, config):
@@ -26,69 +34,53 @@ def suggest_value(trial, param_name, config):
     else:
         raise ValueError(f"Unknown parameter type: {config['type']}")
 
+def score_metric(metric, y_obs, y_pred):
+    if metric == 'roc':
+        return METRICS[metric](y_obs, y_pred)
+    if metric[0] == 'f':
+        beta = float(metric.split('f')[1])
+        return METRICS['f'](y_obs, y_pred, beta=beta, average='binary')
+    return METRICS[metric](y_obs, y_pred, average='binary')
+
+
+def build_param_space(trial, phase):
+    return {
+        param: suggest_value(trial, param, config)
+        for param, config in OPTIMIZATION_PARAMS[phase].items()
+    }
+
+
+def invalid_space(phase, space):
+    if phase == 'P':
+        return space['p_lta'] <= space['p_sta'] or space['p_fmax'] <= space['p_fmin']
+    return space['s_fmax'] <= space['s_fmin']
+
+
 def objetive_p(trial, metric='f1'):
     """Función objetivo a minimizar"""
-    
-    metrics = {
-                'f': fbeta_score,
-                'pr': precision_score,
-                're': recall_score,
-                'roc': roc_auc_score
-               }
-    
-    space = {
-        param: suggest_value(trial, param, config)
-        for param, config in OPTIMIZATION_PARAMS['P'].items()
-    }
-    if space['p_lta'] <= space['p_sta'] or space['p_fmax'] <= space['p_fmin']:
+    space = build_param_space(trial, 'P')
+    if invalid_space('P', space):
         return 0.0
     space.update({'p_timecorr': DEFAULT_VALUES['p_timecorr']})
-    
+
     stalta = StaLta()
     y_obs, y_pred = stalta.mega_sta_lta(**space)
-    
-    if metric == 'roc':
-        score = metrics[metric](y_obs, y_pred)
-    elif metric[0] == 'f':
-        beta = float(metric.split('f')[1])
-        score = metrics['f'](y_obs, y_pred, beta=beta, average='binary')
-    else:
-        score = metrics[metric](y_obs, y_pred, average='binary')
-    
-    return score
+
+    return score_metric(metric, y_obs, y_pred)
 
 
 def objective_s(trial, metric='f1'):
     """Función objetivo a minimizar"""
-    
-    metrics = {
-                'f': fbeta_score,
-                'pr': precision_score,
-                're': recall_score,
-                'roc': roc_auc_score
-               }
-    
-    space = {
-        param: suggest_value(trial, param, config)
-        for param, config in OPTIMIZATION_PARAMS['S'].items()
-    }
-    if space['s_fmax'] <= space['s_fmin']:
+    space = build_param_space(trial, 'S')
+    if invalid_space('S', space):
         return 0.0
-    
+
     stalta = StaLta()
     space.update(stalta.best_p_params)
     ic(space)
     y_obs, y_pred = stalta.mega_sta_lta(**space)
-    
-    if metric == 'roc':
-        score = metrics[metric](y_obs, y_pred)
-    elif metric[0] == 'f':
-        beta = float(metric.split('f')[1])
-        score = metrics['f'](y_obs, y_pred, beta=beta, average='binary')
-    else:
-        score = metrics[metric](y_obs, y_pred, average='binary')
-    
-    return score
+
+    return score_metric(metric, y_obs, y_pred)
 
 
 def bayes_optuna(net, sta, loc, ch, phase, n_trials=1000):
@@ -206,7 +198,14 @@ class PlotWrite:
         csv_data = CSVData(self.phase, best_params, self.net, self.sta)
         
         results_file = f'results_{self.phase}.csv'
-        if not os.path.exists(results_file):
+        if os.path.exists(results_file):
+            with open(results_file, 'r') as f:
+                existing_header = f.readline()
+            if existing_header != csv_data.header:
+                print(f"\n\tWARNING: {results_file} header mismatch, rewriting with current format.\n")
+                with open(results_file, 'w') as f:
+                    f.write(csv_data.header)
+        else:
             with open(results_file, 'w') as f:
                 f.write(csv_data.header)
         with open(results_file, 'a') as f:
@@ -271,15 +270,6 @@ class PlotWrite:
         # Add all default values
         for key, value in DEFAULT_VALUES.items():
             params.setdefault(key, value)
-        
-        # Calculate derived parameters if needed for backwards compatibility.
-        if 'p_fmax' not in params and 'p_fwidth' in params:
-            params['p_fmax'] = params['p_fmin'] + params['p_fwidth']
-        if 'p_lta' not in params and 'p_sta_width' in params:
-            params['p_lta'] = params['p_sta'] + params['p_sta_width']
-        params['aic_fmax'] = params['aic_fmin'] + params['aic_fwidth']
-        if 's_fmax' not in params and 's_fwidth' in params:
-            params['s_fmax'] = params['s_fmin'] + params['s_fwidth']
 
         # Expand template-ready values for configuration files
         params.update(render_config_param_templates(params))

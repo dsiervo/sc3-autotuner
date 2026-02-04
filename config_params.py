@@ -11,17 +11,17 @@ s_fmin_name = 's_fmin'
 s_fmax_name = 's_fmax'
 OPTIMIZATION_PARAMS = {
     'P': {
-        p_sta_name: {'min': 0.1, 'max': 3, 'step': 0.01, 'type': 'float'},
-        p_lta_name: {'min': 1.1, 'max': 103, 'step': 0.01, 'type': 'float'},
-        p_fmin_name: {'min': 1, 'max': 10, 'step': 1, 'type': 'int'},
-        p_fmax_name: {'min': 2, 'max': 40, 'step': 1, 'type': 'int'},
+        p_sta_name: {'min': 1, 'max': 5, 'step': 1, 'type': 'int'},
+        p_lta_name: {'min': 2, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'},
         p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
         trig_on_name: {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
     },
     'S': {
-        s_snr_name: {'min': 1, 'max': 4, 'step': 0.01, 'type': 'float'},
-        s_fmin_name: {'min': 0.1, 'max': 10, 'step': 0.1, 'type': 'float'},
-        s_fmax_name: {'min': 1.1, 'max': 25, 'step': 0.1, 'type': 'float'}
+        s_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
+        s_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        s_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'}
     }
 }
 
@@ -30,7 +30,7 @@ DEFAULT_VALUES = {
     'p_timecorr': 0.0,
     'aic_fmin': 1,
     'aic_fwidth': 0,
-    'picker_aic_filter': 'ITAPER(1)>>BW_HP(3,2)'
+    'picker_aic_filter': 'BW(4,{p_fmin},{p_fmax})'
 }
 
 # Mapping from SeisComP configuration parameter names to the template values
@@ -75,16 +75,24 @@ def render_config_param_templates(params: dict) -> dict:
     skipped.
     """
     rendered = {}
+    resolved_params = params.copy()
     formatter = string.Formatter()
+
+    for key, value in params.items():
+        if isinstance(value, str) and '{' in value and '}' in value:
+            try:
+                resolved_params[key] = value.format(**params)
+            except KeyError:
+                pass
 
     for param_name, template in CONFIG_PARAM_TEMPLATES.items():
         required_fields = {
             field for _, field, _, _ in formatter.parse(template) if field
         }
-        if not required_fields.issubset(params.keys()):
+        if not required_fields.issubset(resolved_params.keys()):
             continue
 
-        value = template.format(**params)
+        value = template.format(**resolved_params)
         rendered[param_name] = value
 
         safe_key = param_name.replace('.', '_').replace('-', '_')
