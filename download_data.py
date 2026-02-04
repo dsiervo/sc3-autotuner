@@ -1,4 +1,3 @@
-from matplotlib.pyplot import phase_spectrum
 import numpy as np
 import datetime
 from dataclasses import dataclass
@@ -7,7 +6,9 @@ import os
 from obspy.clients.fdsn.header import FDSNException,FDSNNoDataException,FDSNBadGatewayException
 import scipy as sc
 import csv
-import sys
+from icecream import ic
+
+ic.configureOutput(prefix='debug| ')
 
 
 @dataclass
@@ -66,30 +67,23 @@ class DownloadWaveform:
         return os.path.split(self.data_dir)[0]
 
     def get_wf_stream(self):
-        try:
-            ic(self.clients)
-            ic(self.station.net, self.station.name, self.station.loc, self.station.ch, self.pick.ti, self.pick.tf)
-            self.st = self.clients[0].get_waveforms(network=self.station.net,
-                                                station=self.station.name,
-                                                location=self.station.loc,
-                                                channel=self.station.ch+'*',
-                                                starttime=self.pick.ti,
-                                                endtime=self.pick.tf)
-            return True
-        except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
+        ic(self.clients)
+        ic(self.station.net, self.station.name, self.station.loc, self.station.ch, self.pick.ti, self.pick.tf)
+        for client in self.clients:
             try:
-                self.st = self.clients[1].get_waveforms(network=self.station.net,
-                                                    station=self.station.name,
-                                                    location=self.station.loc,
-                                                    channel=self.station.ch+'*',
-                                                    starttime=self.pick.ti,
-                                                    endtime=self.pick.tf)
+                self.st = client.get_waveforms(network=self.station.net,
+                                               station=self.station.name,
+                                               location=self.station.loc,
+                                               channel=self.station.ch+'*',
+                                               starttime=self.pick.ti,
+                                               endtime=self.pick.tf)
                 return True
             except (FDSNException, FDSNNoDataException, FDSNBadGatewayException):
-                print('\n\n\tNo se encontraron datos')
-                print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
-                print(f'\t{self.pick.ti} - {self.pick.tf}')
-                return False
+                continue
+        print('\n\n\tNo se encontraron datos')
+        print(f'\t{self.station.net}.{self.station.name}.{self.station.loc}.{self.station.ch}')
+        print(f'\t{self.pick.ti} - {self.pick.tf}')
+        return False
     
     def trim_and_merge(self):
         self.st.trim(self.pick.ti, self.pick.tf)
@@ -135,8 +129,9 @@ class PurgeSNR:
     
     def phase_point(self):
         """Compute the data points for an enter interval"""
-        tr_i = self.t - self.ti - self.unc
-        tr_f = self.t - self.tf + self.unc
+        pick_offset = self.t - self.ti
+        tr_i = pick_offset - self.unc
+        tr_f = pick_offset + self.unc
         
         npi = int(tr_i * self.sampling_rate)
         npf = int(tr_f * self.sampling_rate)
@@ -309,7 +304,11 @@ class Query:
             raise Exception('query_type does not match with picks or station_coords')
 
 
-def waveform_downloader(clients, station, manual_picks: list, dt: int):
+NOISE_GAP_SECONDS = 5
+
+
+def waveform_downloader(clients, station, manual_picks: list, dt: int,
+                        download_noise_p: bool):
 
     ic(len(manual_picks))
     # keeping with event id and p times in manual_picks
@@ -326,6 +325,7 @@ def waveform_downloader(clients, station, manual_picks: list, dt: int):
     ic(len(purged_wf))
 
     waveforms = {}
+    noise_waveforms = {} if download_noise_p else None
 
     # Download waveforms for each pick
     for waveform in purged_wf:
@@ -352,6 +352,11 @@ def waveform_downloader(clients, station, manual_picks: list, dt: int):
         
         ic(download.wf_path)
         waveforms[waveform.event_id] = download
+        # Attempt to download an equivalent-length noise window for P-phase usage
+        if download_noise_p:
+            noise_download = download_noise_window(download, station, clients)
+            if noise_download:
+                noise_waveforms[noise_download.pick.event_id] = noise_download
         # writing the mseed file
         download.write()
 
@@ -359,7 +364,41 @@ def waveform_downloader(clients, station, manual_picks: list, dt: int):
         return None
 
     # write phase times on file and return the paths to times file
-    return write_picks(p_times, s_times, waveforms, station)
+    return write_picks(p_times, s_times, waveforms, station,
+                       noise_waveforms if download_noise_p else None)
+
+
+def download_noise_window(event_download, station, clients):
+    """
+    Download a noise-only waveform with the same duration as the event window,
+    ending a few seconds before the pick time.
+    """
+    duration = event_download.pick.tf - event_download.pick.ti
+    if duration <= 0:
+        return None
+
+    noise_tf = event_download.pick.t - NOISE_GAP_SECONDS
+    noise_ti = noise_tf - duration
+    if noise_tf <= noise_ti:
+        return None
+
+    noise_event_id = f'{event_download.pick.event_id}_NOISE'
+    wf_id = f'{noise_event_id}.{station.name}.{station.loc}.{station.ch}'
+    wf_id += f'_{noise_tf.strftime("%Y%m%dT%H%M%S")}'
+    noise_waveform = Waveform(noise_tf, wf_id, noise_event_id, noise_ti, noise_tf)
+    noise_download = DownloadWaveform(noise_waveform, station, clients)
+
+    if noise_download.mseed_exists():
+        noise_download.load_stream()
+        return noise_download
+
+    success = noise_download.get_wf_stream()
+    if not success:
+        return None
+
+    noise_download.trim_and_merge()
+    noise_download.write()
+    return noise_download
 
 
 @dataclass
@@ -410,7 +449,7 @@ class WritePhases:
             writer.writerows(self.phase_times)
 
 
-def write_picks(p_picks, s_picks, waveforms, station):
+def write_picks(p_picks, s_picks, waveforms, station, noise_waveforms=None):
     # write pick times in a csv file
     picks = {'P': p_picks, 'S': s_picks}
     times_paths = {}
@@ -426,7 +465,21 @@ def write_picks(p_picks, s_picks, waveforms, station):
             except KeyError:
                 print(f'{row[0]} not found in waveforms')
                 continue
+        if phase == 'P' and noise_waveforms:
+            for noise_download in noise_waveforms.values():
+                phase_times.append(noise_phase_times(noise_download))
         wr_ph = WritePhases(station, phase, phase_times)
         wr_ph.write()
         times_paths[phase] = wr_ph.phase_file_path
     return times_paths
+
+
+def noise_phase_times(noise_download):
+    """
+    Build the CSV row for a noise-only waveform.
+    """
+    wf_name = noise_download.wf_path
+    start_time = noise_download.pick.ti.strftime("%Y-%m-%dT%H:%M:%S.%f")
+    sample_rate = noise_download.st[0].stats.sampling_rate
+    npts = noise_download.st[0].stats.npts
+    return [wf_name, 'NO_PICK', start_time, sample_rate, npts]

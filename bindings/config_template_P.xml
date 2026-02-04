@@ -5,11 +5,11 @@
       <moduleID>Config/trunk</moduleID>
       <parameter publicID="Parameter/20210721213024.332253.5">
         <name>detecStream</name>
-        <value>{ch}</value>
+        <value>{detecStream}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.33249.6">
         <name>detecLocid</name>
-        <value>{loc}</value>
+        <value>{detecLocid}</value>
       </parameter>
     </parameterSet>
     <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/pickbayes" created="2021-07-21T21:30:24.332642Z">
@@ -21,23 +21,23 @@
       </parameter>
       <parameter publicID="Parameter/20210721213024.33273.11">
         <name>picker.AIC.filter</name>
-        <value>ITAPER(1)>>BW(4,{aic_fmin},{aic_fmax})</value>
+        <value>{picker_aic_filter}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332747.12">
         <name>picker.AIC.minSNR</name>
-        <value>{p_snr}</value>
+        <value>{picker_aic_minsnr}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332794.15">
         <name>timeCorr</name>
-        <value>{p_timecorr:.2f}</value>
+        <value>{timeCorr}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332807.16">
         <name>detecFilter</name>
-        <value>RMHP(10)&gt;&gt;ITAPER(30)&gt;&gt;BW(4,{p_fmin},{p_fmax})&gt;&gt;STALTA({p_sta:.2f},{p_lta:.2f})</value>
+        <value>{detecFilter}</value>
       </parameter>
       <parameter publicID="Parameter/20210721213024.332828.17">
         <name>trigOff</name>
-        <value>1</value>
+        <value>{trigOff}</value>
       </parameter>
     </parameterSet>
     <parameterSet publicID="ParameterSet/trunk/Station/CM/BAR2/gaps" created="2021-07-21T21:30:24.332912Z">

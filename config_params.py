@@ -1,0 +1,102 @@
+# Optimization ranges, steps and types for parameters
+import string
+p_sta_name = 'p_sta'
+p_lta_name = 'p_lta'
+p_fmin_name = 'p_fmin'
+p_fmax_name = 'p_fmax'
+p_snr_name = 'p_snr'
+trig_on_name = 'trig_on'
+s_snr_name = 's_snr'
+s_fmin_name = 's_fmin'
+s_fmax_name = 's_fmax'
+OPTIMIZATION_PARAMS = {
+    'P': {
+        p_sta_name: {'min': 1, 'max': 5, 'step': 1, 'type': 'int'},
+        p_lta_name: {'min': 2, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'},
+        p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
+        trig_on_name: {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
+    },
+    'S': {
+        s_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
+        s_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        s_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'}
+    }
+}
+
+# Default values for fixed parameters
+DEFAULT_VALUES = {
+    'p_timecorr': 0.0,
+    'aic_fmin': 1,
+    'aic_fwidth': 0,
+    'picker_aic_filter': 'BW(4,{p_fmin},{p_fmax})'
+}
+
+# Mapping from SeisComP configuration parameter names to the template values
+# (placeholders) used in the XML and station configuration templates.
+CONFIG_PARAM_TEMPLATES = {
+    'detecStream': '{ch}',
+    'detecLocid': '{loc}',
+    'trigOn': '{trig_on:.2f}',
+    'trigOff': '1',
+    'timeCorr': '{p_timecorr:.2f}',
+    'picker.AIC.filter': '{picker_aic_filter}',
+    'picker.AIC.minSNR': '{p_snr}',
+    'detecFilter': 'RMHP(10)>>ITAPER(30)>>BW(4,{p_fmin},{p_fmax})>>STALTA({p_sta:.2f},{p_lta:.2f})',
+    'spicker.AIC.filter': 'ITAPER(1)>>BW(4,{s_fmin},{s_fmax})',
+    'spicker.AIC.step': '0.1',
+    'spicker.AIC.minCnt': '3',
+    'spicker.AIC.minSNR': '{s_snr:.2f}'
+}
+
+# CSV file headers
+CSV_HEADERS = {
+    'P': ['net.sta', p_sta_name, p_lta_name, p_fmin_name, p_fmax_name,
+          p_snr_name, trig_on_name, 'best_f1'],
+    'S': ['net.sta', s_snr_name, s_fmin_name, s_fmax_name, 'best_f1']
+}
+
+# Parameters to plot in optimization visualizations
+PLOT_PARAMS = {
+    'P': [p_sta_name, p_lta_name, p_fmin_name, p_fmax_name, p_snr_name, trig_on_name],
+    'S': [s_snr_name, s_fmin_name, s_fmax_name]
+}
+
+
+def render_config_param_templates(params: dict) -> dict:
+    """
+    Build a dictionary with resolved template values for each SeisComP
+    configuration parameter. Both the original parameter name (e.g.
+    ``picker.AIC.filter``) and a sanitized key with dots replaced by underscores
+    (e.g. ``picker_AIC_filter`` and a lower-case ``picker_aic_filter``) are
+    provided so they can be used directly in ``str.format`` templates.
+    Templates that cannot be rendered because placeholders are missing are
+    skipped.
+    """
+    rendered = {}
+    resolved_params = params.copy()
+    formatter = string.Formatter()
+
+    for key, value in params.items():
+        if isinstance(value, str) and '{' in value and '}' in value:
+            try:
+                resolved_params[key] = value.format(**params)
+            except KeyError:
+                pass
+
+    for param_name, template in CONFIG_PARAM_TEMPLATES.items():
+        required_fields = {
+            field for _, field, _, _ in formatter.parse(template) if field
+        }
+        if not required_fields.issubset(resolved_params.keys()):
+            continue
+
+        value = template.format(**resolved_params)
+        rendered[param_name] = value
+
+        safe_key = param_name.replace('.', '_').replace('-', '_')
+        for candidate in (safe_key, safe_key.lower()):
+            rendered[candidate] = value
+
+    return rendered

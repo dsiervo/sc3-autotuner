@@ -2,36 +2,35 @@
 # scrttv. If no component code is given, the vertical component will be fetched
 # from inventory. For that the channel orientation (azimuth, dip) will be used.
 # If that approach fails, 'Z' will be appended and used as fallback.
-detecStream = {ch}
+detecStream = {detecStream}
 
 # Defines the location code of the preferred stream used eg by scautopick and
 # scrttv.
-detecLocid = {loc}
+detecLocid = {detecLocid}
 
 # Configures the filter used to compute the L2.
-spicker.AIC.filter = ITAPER(1)>>BW(4,{s_fmin},{s_fmax})
+spicker.AIC.filter = {spicker_aic_filter}
 
 # Defines the mininum SNR as returned from AIC.
-spicker.AIC.minSNR = {s_snr:.2f}
+spicker.AIC.minSNR = {spicker_aic_minsnr}
 
 # The AIC time window stepping in seconds. For every step the AIC is computed.
-spicker.AIC.step = 0.1
+spicker.AIC.step = {spicker_aic_step}
 
-# Overrides the default filter which is "raw". The typical filter grammar can
-# be used.
-picker.AIC.filter = ITAPER(1)>>BW(4,{aic_fmin},{aic_fmax})
+# Overrides the default filter which is "raw".
+picker.AIC.filter = {picker_aic_filter}
 
 # Defines the mininum SNR.
-picker.AIC.minSNR = {p_snr}
+picker.AIC.minSNR = {picker_aic_minsnr}
 
 # Defines the filter to be used for picking with 2 decimal places
-detecFilter = "RMHP(10)>>ITAPER(30)>>BW(4,{p_fmin},{p_fmax})>>STALTA({p_sta:.2f},{p_lta:.2f})"
+detecFilter = "{detecFilter}"
 
 # For which value on the filtered waveform is a pick detected.
-trigOn = {trig_on:.2f}
+trigOn = {trigOn}
 
 # The value the filtered waveform must reach to enable a detection again.
-trigOff = 1
+trigOff = {trigOff}
 
 # The time correction applied to a detected pick.
-timeCorr = {p_timecorr:.2f}
+timeCorr = {timeCorr}

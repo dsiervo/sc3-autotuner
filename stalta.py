@@ -14,6 +14,8 @@ from obspy.core import UTCDateTime
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
+from config_params import DEFAULT_VALUES, render_config_param_templates
+
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 
 
@@ -212,7 +214,11 @@ class StaLta:
         Compute sta/lta for a single line
         """
         fields = line.split(',')
-        self.ph_time = [obspy.UTCDateTime(fields[1].strip("\n\r"))]
+        pick_value = fields[1].strip("\n\r")
+        if pick_value in ['', 'NO_PICK']:
+            self.ph_time = []
+        else:
+            self.ph_time = [obspy.UTCDateTime(pick_value)]
         # get the initial waveform time
         self.wf_start_time = obspy.UTCDateTime(fields[2].strip("\n\r"))
         # get the sample rate
@@ -231,17 +237,26 @@ class StaLta:
         """
         Edit the config.xml file
         """
+        # Set default values from central configuration
+        for key, value in DEFAULT_VALUES.items():
+            kwargs.setdefault(key, value)
+
         if self.phase == 'P':
             xml_filename = 'config_template_P.xml'
-            kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
-            kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
-            kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
+            required_keys = ['p_sta', 'p_lta', 'p_fmin', 'p_fmax', 'p_snr', 'trig_on']
         else:
             xml_filename = 'config_template.xml'
-            kwargs['p_fmax'] = kwargs['p_fmin'] + kwargs['p_fwidth']
-            kwargs['p_lta'] = kwargs['p_sta'] + kwargs['p_sta_width']
-            kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
-            kwargs['s_fmax'] = kwargs['s_fmin'] + kwargs['s_fwidth']
+            required_keys = ['p_sta', 'p_lta', 'p_fmin', 'p_fmax', 'p_snr', 'trig_on',
+                             's_snr', 's_fmin', 's_fmax']
+
+        missing = [key for key in required_keys if key not in kwargs]
+        if missing:
+            raise KeyError(f"Missing required parameters for {self.phase} configuration: {', '.join(missing)}")
+
+        kwargs['aic_fmax'] = kwargs['aic_fmin'] + kwargs['aic_fwidth']
+
+        # Precompute config parameter strings so templates can consume them
+        kwargs.update(render_config_param_templates(kwargs))
     
         ic(xml_filename)
         # xml path for the template
