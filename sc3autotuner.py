@@ -33,7 +33,7 @@ def main():
     download_noise_raw = params_new.get('download_noise_p')
     if download_noise_raw is None:
         download_noise_flag = False
-        print("\n\tParameter 'download_noise_p' not set. Using default value False for P-phase noise downloads.\n")
+        print(f"\n\tParameter 'download_noise_p' not set. Using default value False for P-phase noise downloads: {download_noise_flag}\n")
     else:
         download_noise_flag = parse_bool(download_noise_raw)
         print(f"\n\tParameter 'download_noise_p' set to {download_noise_flag} for P-phase noise downloads.\n")

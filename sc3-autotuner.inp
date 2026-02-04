@@ -7,21 +7,26 @@ tune_mode = picker
 
 # Debug? If True, will print out debug messages and plots
 # the picks and the waveforms
-debug = True
+debug = False
 
 # IP to server with SQL data base for events query
-deb_url = sc3primary.beg.utexas.edu
+deb_url = scdb.beg.utexas.edu
 
 # Initial and final times for picks searching
-ti = 2020-10-01 00:00:00
-tf = 2020-12-01 23:59:59
+ti = 2025-10-15 00:00:00
+tf = 2025-10-25 23:59:59
 
 # inventory xml file
-inv_xml = /home/daniel/inventory_sc3primary/inventory.xml
+inv_xml = /home/seiscomp/py_seiscomp2/inventory.xml
 
-# sql usr and psw for query
-sql_usr = sysop
-sql_psw = sysop
+# sql usr and psw for picks query
+sql_usr = sysro
+sql_psw = 0niReady
+
+# sql usr and psw for station data query (inventory DB)
+wf_url = scarchive.beg.utexas.edu
+wf_sql_usr = userro
+wf_sql_psw = Itr0nly
 
 # =======================================
 # pick_tuner options
@@ -29,17 +34,21 @@ sql_psw = sysop
 
 # Pickers of stations/channels to tune
 #stations = CM.BAR2.00.HH, CM.PDSC.10.HN, CM.PAM.20.EH
-stations = CM.BAR2.00.HH
-
+#stations = TX.MB07.00.CH, TX.MB05.00.HH, TX.ODSA.00.HH, TX.POST.00.HH, TX.MNHN.00.HH, TX.OG02.00.CH, TX.SGCY.00.HH, TX.MB04.00.CH, TX.OZNA.00.HH, TX.MB09.00.HH, TX.MB06.00.HH, TX.OG01.00.CH, 4O.MBBB1.00.HH, TX.MB15.00.HH, TX.MB02.00.HH, TX.MB01.00.HH, TX.MB11.00.HH, TX.MB16.00.HH, TX.OG04.00.CH, TX.MB10.01.HH, 4O.MBBB5.00.HH, TX.MB08.00.HH, TX.MB18.00.HH, 4O.SM02.00.HH, 4O.SD01.00.HH, 4O.MG01.00.HH, N4.MSTX.00.HH, 4O.SM03.00.HH, 4O.SM04.00.HH, TX.PECS.00.HH, TX.SN08.00.CH, TX.MB13.00.HH, TX.MB17.00.CH, TX.MB23.00.HH, TX.PB18.00.HH, 4O.MID02..HH, TX.DKNS.00.HH, TX.PB04.00.HH, 4O.AT01.00.HH, TX.MB19.00.HH, TX.MB21.00.HH, 4O.SM01.00.HH, TX.MB22.00.HH, 4O.MBBB4.00.HH, 4O.CW01.00.HH, TX.YK01.00.CH, 4O.OE01.00.HH
+stations = 4O.GV02.00.HH
 # IP to FDSN for waveforms download
-fdsn_ip = http://10.100.100.13:8091
+fdsn_ip = http://scarchive.beg.utexas.edu, http://rtserve.beg.utexas.edu
 
-# Maximun number of manual picks by station to use for tuning
+# Download noise windows for each P pick? True or False
+download_noise_p = True
+
+# Maximun number of manual picks per station to use for tuning
 max_picks = 5
 
 # Number of optimization trials to run for each phase for each station
-n_trials = 5
+n_trials = 20
 
+radius = 50
 # =======================================
 # assoc_tuner options
 # =======================================

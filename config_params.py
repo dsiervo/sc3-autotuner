@@ -11,17 +11,17 @@ s_fmin_name = 's_fmin'
 s_fmax_name = 's_fmax'
 OPTIMIZATION_PARAMS = {
     'P': {
-        p_sta_name: {'min': 0.1, 'max': 3, 'step': 0.01, 'type': 'float'},
-        p_lta_name: {'min': 1.1, 'max': 103, 'step': 0.01, 'type': 'float'},
-        p_fmin_name: {'min': 1, 'max': 10, 'step': 1, 'type': 'int'},
-        p_fmax_name: {'min': 2, 'max': 40, 'step': 1, 'type': 'int'},
+        p_sta_name: {'min': 1, 'max': 5, 'step': 1, 'type': 'int'},
+        p_lta_name: {'min': 2, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        p_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'},
         p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
         trig_on_name: {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
     },
     'S': {
-        s_snr_name: {'min': 1, 'max': 4, 'step': 0.01, 'type': 'float'},
-        s_fmin_name: {'min': 0.1, 'max': 10, 'step': 0.1, 'type': 'float'},
-        s_fmax_name: {'min': 1.1, 'max': 25, 'step': 0.1, 'type': 'float'}
+        s_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
+        s_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
+        s_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'}
     }
 }
 
