@@ -6,6 +6,7 @@ from reference_picker import (
     ComparisonCollector,
     build_reference_scautopick_xml,
     compute_binary_metrics,
+    compute_pick_metrics,
     format_comparison_table,
     load_station_picker_params,
     resolve_reference_station_file,
@@ -70,6 +71,15 @@ def test_build_reference_scautopick_xml_contains_station_and_picker_params(tmp_p
     assert name_values["picker.AIC.minSNR"] == "3"
 
 
+def test_build_reference_scautopick_xml_allows_relative_output_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    station_file = tmp_path / "station_CM_BAR2"
+    station_file.write_text("trigOn = 4.0\n")
+
+    build_reference_scautopick_xml(str(station_file), "exc_reference_BAR2_P.xml", "CM", "BAR2", "00", "HH")
+    assert (tmp_path / "exc_reference_BAR2_P.xml").exists()
+
+
 def test_compute_binary_metrics_and_table():
     y_obs = [1, 1, 0, 0]
     y_pred = [1, 0, 1, 0]
@@ -80,9 +90,15 @@ def test_compute_binary_metrics_and_table():
     assert metrics["fpr"] == pytest.approx(0.5)
     assert metrics["confusion"] == [[1, 1], [1, 1]]
 
+    pick_metrics = compute_pick_metrics(tp=2, fp=1, fn=1)
+    assert pick_metrics["f1"] == pytest.approx(2 * 2 / (2 * 2 + 1 + 1))
+    assert pick_metrics["tpr"] == pytest.approx(2 / (2 + 1))
+    assert pick_metrics["fpr"] == pytest.approx(1 / (2 + 1))
+    assert pick_metrics["confusion"] == [[0, 1], [1, 2]]
+
     collector = ComparisonCollector()
-    collector.add("P", "reference", y_obs, y_pred)
-    collector.add("P", "best", y_obs, y_obs)
+    collector.add("P", "reference", {"tp": 1, "fp": 2, "fn": 0})
+    collector.add("P", "best", {"tp": 2, "fp": 0, "fn": 0})
     table = format_comparison_table(collector)
     assert "Phase" in table
     assert "reference" in table

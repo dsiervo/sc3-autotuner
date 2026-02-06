@@ -8,6 +8,8 @@ Created on Jul 20 2021
 #from obspy import read, UTCDateTime
 import obspy
 import os
+import shutil
+import subprocess
 import xml.etree.ElementTree as ET
 import pandas as pd
 from obspy.core import UTCDateTime
@@ -46,13 +48,14 @@ class StaLta:
         """function that reads from a file called current_exc.txt
         the values of times_paths['P'] or times_paths['S'], picks_dir, inv_xml, and debug
         """
-        f = open('current_exc.txt', 'r')
-        lines = f.readlines()
-        f.close()
+        with open('current_exc.txt', 'r') as f:
+            lines = f.readlines()
         dic = {}
         for line in lines:
             line = line.strip('\n').strip(' ')
-            key, value = line.split('=')
+            if line == '' or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
             dic[key.strip()] = value.strip()
         return dic
 
@@ -74,7 +77,8 @@ class StaLta:
     
     @property
     def lines(self):
-        return open(self.times_file, 'r').readlines()
+        with open(self.times_file, 'r') as f:
+            return f.readlines()
     
     @property
     def N(self):
@@ -90,12 +94,15 @@ class StaLta:
         else:
             return int(os.cpu_count() * 1)
 
-    def mega_sta_lta(self, config_db_path=None, **kwargs):
+    def mega_sta_lta(self, config_db_path=None, collect_pick_level=False,
+                     pick_match_unc=None, **kwargs):
         """
         Compute sta/lta for all lines in the file
         """
         kwargs.update(self._current_exc_params)
         self.remove_picks_dir()
+        self.collect_pick_level = collect_pick_level
+        self.pick_match_unc = BinaryTransform.unc if pick_match_unc is None else float(pick_match_unc)
         if config_db_path is None:
             self.edit_xml_config(**kwargs)
         else:
@@ -103,6 +110,9 @@ class StaLta:
         
         Y_obs_ = []
         Y_pred_ = []
+        tp_total = 0
+        fp_total = 0
+        fn_total = 0
         """for line in self.lines:
             self.exc_read_transform(line)
             Y_obs_.append(self.y_obs)
@@ -114,12 +124,23 @@ class StaLta:
         # self.max_workers
         # execute scautopick in parallel and saving the results in Y_obs and Y_pred
         with ProcessPoolExecutor(max_workers=self.max_workers) as excecutor:
-            for y_obs, y_pred in excecutor.map(self.exc_read_transform, self.lines):
+            for result in excecutor.map(self.exc_read_transform, self.lines):
+                if self.collect_pick_level:
+                    y_obs, y_pred, tp_i, fp_i, fn_i = result
+                    tp_total += tp_i
+                    fp_total += fp_i
+                    fn_total += fn_i
+                else:
+                    y_obs, y_pred = result
                 Y_obs_.append(y_obs)
                 Y_pred_.append(y_pred)
 
-        Y_obs = np.concatenate(Y_obs_)
-        Y_pred = np.concatenate(Y_pred_)
+        if len(Y_obs_) == 0:
+            Y_obs = np.array([])
+            Y_pred = np.array([])
+        else:
+            Y_obs = np.concatenate(Y_obs_)
+            Y_pred = np.concatenate(Y_pred_)
                                 
         ic(Y_obs)
         ic(Y_pred)
@@ -130,6 +151,9 @@ class StaLta:
             print('\n\nFinishing mega_sta_lta')
             print('Running test_binary_times...\n')
             self.test_binary_times(Y_obs, Y_pred)
+        if self.collect_pick_level:
+            pick_counts = {'tp': tp_total, 'fp': fp_total, 'fn': fn_total}
+            return Y_obs, Y_pred, pick_counts
         return Y_obs, Y_pred
 
     def exc_read_transform(self, line):
@@ -147,6 +171,9 @@ class StaLta:
         except KeyError:
             ic()
             self.pick_times = []
+        except (ValueError, ET.ParseError, FileNotFoundError):
+            ic()
+            self.pick_times = []
             
         # transform predicted times into a binary time series
         y_pred = BinaryTransform(self.wf_start_time,
@@ -161,8 +188,38 @@ class StaLta:
             print('\n\nFinishing exc_read_transform')
             print('Running test_binary_time...\n')
             self.test_binary_time(y_pred)
-        
+        if self.collect_pick_level:
+            pick_counts = self._match_pick_times(self.ph_time, self.pick_times,
+                                                 self.pick_match_unc)
+            return y_obs, y_pred, pick_counts['tp'], pick_counts['fp'], pick_counts['fn']
         return y_obs, y_pred
+
+    @staticmethod
+    def _match_pick_times(obs_times, pred_times, tolerance_seconds):
+        """
+        One-to-one greedy matching of observed and predicted pick times.
+        """
+        obs = sorted(float(t) for t in obs_times)
+        pred = sorted(float(t) for t in pred_times)
+
+        i = 0
+        j = 0
+        tp = 0
+
+        while i < len(obs) and j < len(pred):
+            dt = pred[j] - obs[i]
+            if abs(dt) <= tolerance_seconds:
+                tp += 1
+                i += 1
+                j += 1
+            elif pred[j] < obs[i] - tolerance_seconds:
+                j += 1
+            else:
+                i += 1
+
+        fp = len(pred) - tp
+        fn = len(obs) - tp
+        return {'tp': tp, 'fp': fp, 'fn': fn}
 
     def time2sample(self, time: UTCDateTime):
         """
@@ -209,8 +266,17 @@ class StaLta:
         """
         Remove the picks directory content if it exists
         """
-        if os.path.exists(self.picks_dir):
-            os.system(f'rm {self.picks_dir}/*')
+        if not os.path.isdir(self.picks_dir):
+            return
+        for entry in os.listdir(self.picks_dir):
+            path = os.path.join(self.picks_dir, entry)
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
         
     def sta_lta_compute(self, line: str):
         """
@@ -264,7 +330,8 @@ class StaLta:
         ic(xml_filename)
         # xml path for the template
         xml_path = os.path.join(self.main_dir, 'bindings', xml_filename)
-        xml_str = open(xml_path, 'r').read()
+        with open(xml_path, 'r') as f:
+            xml_str = f.read()
         
         # xml path for the excecution of scautopick
         self.xml_exc_path = os.path.join(os.getcwd(), self.xml_exc_name)
@@ -276,15 +343,21 @@ class StaLta:
         """
         Run scautopick
         """
-        #debug_line = ' --debug' if self.debug else ''
-        debug_line = ''
-        # Run scautopick
-        cmd = f'scautopick -I {self.wf_path} --config-db {self.xml_exc_path}'
-        cmd += f' --amplitudes 0 --inventory-db {self.inv_xml}'
-        cmd += f' --playback --ep{debug_line}>{self.pick_path}'
-        ic(cmd)
-        #print(cmd)
-        os.system(cmd)
+        cmd = [
+            'scautopick',
+            '-I', self.wf_path,
+            '--config-db', self.xml_exc_path,
+            '--amplitudes', '0',
+            '--inventory-db', self.inv_xml,
+            '--playback',
+            '--ep',
+        ]
+        ic(' '.join(cmd))
+        os.makedirs(self.picks_dir, exist_ok=True)
+        with open(self.pick_path, 'w') as out:
+            result = subprocess.run(cmd, stdout=out, check=False)
+        if result.returncode != 0:
+            ic(f'scautopick returned non-zero code {result.returncode} for {self.wf_path}')
 
     @property
     def picks_name(self):
@@ -308,20 +381,14 @@ class XMLPicks:
 
     def check_ns_url_match(self):
         """
-        Check if the namespace URL in the XML file matches the expected URL in the class's ns attribute.
-        Raises a ValueError if there is a mismatch.
+        Update parser namespace from the XML root if present.
         """
         try:
             tree = ET.parse(self.xml_path)
             root = tree.getroot()
-            file_ns_url = root.tag[root.tag.find("{") + 1:root.tag.find("}")]
-            
-            expected_ns_url = self.ns['seiscomp']
-            if file_ns_url != expected_ns_url:
-                raise ValueError(
-                    f"Namespace URL mismatch: Expected '{expected_ns_url}', but found '{file_ns_url}' "
-                    f"in the XML file '{self.xml_path}'. Please check that the schema coincides with the expected URL."
-                )
+            if root.tag.startswith('{') and '}' in root.tag:
+                file_ns_url = root.tag[1:root.tag.find("}")]
+                self.ns = {'seiscomp': file_ns_url}
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse XML file '{self.xml_path}': {str(e)}")
 

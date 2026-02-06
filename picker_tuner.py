@@ -250,7 +250,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                 continue
 
             reference_xml_path = os.path.join(reference_xml_dir,
-                                              f'exc_reference_{sta}_{phase}.xml')
+                                              f'exc_reference_{net}_{sta}_{phase}.xml')
             try:
                 build_reference_scautopick_xml(reference_station_file,
                                                reference_xml_path,
@@ -258,16 +258,16 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                                                sta,
                                                loc,
                                                ch_)
-                best_y_obs, best_y_pred = evaluate_best_phase(net, sta, phase)
-                ref_y_obs, ref_y_pred = evaluate_reference_phase(reference_xml_path)
+                best_pick_counts = evaluate_best_phase(net, sta, phase)
+                ref_pick_counts = evaluate_reference_phase(reference_xml_path)
             except Exception as exc:
                 print('\033[91m\n\t', end='')
                 print(f'WARNING: Comparison failed for {net}.{sta} {phase}: {exc}')
                 print('\033[0m', end='\n')
                 continue
 
-            comparison_collector.add(phase, 'best', best_y_obs, best_y_pred)
-            comparison_collector.add(phase, 'reference', ref_y_obs, ref_y_pred)
+            comparison_collector.add(phase, 'best', best_pick_counts)
+            comparison_collector.add(phase, 'reference', ref_pick_counts)
 
     if comparison_collector is not None:
         print('\n\033[96mOverall reference vs best picker comparison\033[0m')
@@ -298,12 +298,15 @@ def best_eval_params(net: str, sta: str, phase: str) -> dict:
 def evaluate_best_phase(net: str, sta: str, phase: str):
     stalta = StaLta()
     params = best_eval_params(net, sta, phase)
-    return stalta.mega_sta_lta(**params)
+    _, _, pick_counts = stalta.mega_sta_lta(collect_pick_level=True, **params)
+    return pick_counts
 
 
 def evaluate_reference_phase(reference_xml_path: str):
     stalta = StaLta()
-    return stalta.mega_sta_lta(config_db_path=reference_xml_path)
+    _, _, pick_counts = stalta.mega_sta_lta(config_db_path=reference_xml_path,
+                                            collect_pick_level=True)
+    return pick_counts
 
 def not_tuned_station(station):
     with open('stations_not_tuned.txt', 'a') as f:

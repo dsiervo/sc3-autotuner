@@ -158,7 +158,9 @@ def build_reference_scautopick_xml(
     setup_gaps = ET.SubElement(station, _tag("setup"), name="gaps", enabled="true")
     ET.SubElement(setup_gaps, _tag("parameterSetID")).text = gaps_id
 
-    os.makedirs(os.path.dirname(output_xml_path), exist_ok=True)
+    out_dir = os.path.dirname(output_xml_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     tree = ET.ElementTree(root)
     try:
         ET.indent(tree, space="  ")
@@ -200,32 +202,60 @@ def compute_binary_metrics(y_obs, y_pred) -> dict:
     }
 
 
+def compute_pick_metrics(tp: int, fp: int, fn: int) -> dict:
+    """
+    Compute pick-level metrics from matched/unmatched pick counts.
+    For pick-level reporting TN is not defined, so it is fixed at 0.
+    """
+    tp = int(tp)
+    fp = int(fp)
+    fn = int(fn)
+    tn = 0
+
+    f1_den = 2 * tp + fp + fn
+    tpr_den = tp + fn
+    # Pick-level "false positive rate" as false pick proportion.
+    fpr_den = fp + tp
+
+    f1 = (2 * tp / f1_den) if f1_den else 0.0
+    tpr = (tp / tpr_den) if tpr_den else 0.0
+    fpr = (fp / fpr_den) if fpr_den else 0.0
+
+    return {
+        "f1": f1,
+        "tpr": tpr,
+        "fpr": fpr,
+        "confusion": [[tn, fp], [fn, tp]],
+    }
+
+
 @dataclass
 class ComparisonCollector:
     """Collects per-phase predictions for best-vs-reference reporting."""
 
     data: dict = field(default_factory=lambda: {
-        "P": {"reference": {"obs": [], "pred": []}, "best": {"obs": [], "pred": []}},
-        "S": {"reference": {"obs": [], "pred": []}, "best": {"obs": [], "pred": []}},
+        "P": {"reference": {"tp": 0, "fp": 0, "fn": 0},
+              "best": {"tp": 0, "fp": 0, "fn": 0}},
+        "S": {"reference": {"tp": 0, "fp": 0, "fn": 0},
+              "best": {"tp": 0, "fp": 0, "fn": 0}},
     })
 
-    def add(self, phase: str, label: str, y_obs, y_pred):
-        self.data[phase][label]["obs"].append(np.asarray(y_obs))
-        self.data[phase][label]["pred"].append(np.asarray(y_pred))
+    def add(self, phase: str, label: str, pick_counts: dict):
+        bucket = self.data[phase][label]
+        bucket["tp"] += int(pick_counts.get("tp", 0))
+        bucket["fp"] += int(pick_counts.get("fp", 0))
+        bucket["fn"] += int(pick_counts.get("fn", 0))
 
     def metrics(self, phase: str, label: str):
-        obs_parts = self.data[phase][label]["obs"]
-        pred_parts = self.data[phase][label]["pred"]
-        if not obs_parts or not pred_parts:
+        bucket = self.data[phase][label]
+        if bucket["tp"] == 0 and bucket["fp"] == 0 and bucket["fn"] == 0:
             return None
-        y_obs = np.concatenate(obs_parts)
-        y_pred = np.concatenate(pred_parts)
-        return compute_binary_metrics(y_obs, y_pred)
+        return compute_pick_metrics(bucket["tp"], bucket["fp"], bucket["fn"])
 
 
 def format_comparison_table(collector: ComparisonCollector) -> str:
     """Render an aligned table for P and S overall comparison."""
-    header = "Phase  Config      F1      TPR      FPR   Confusion [TN FP; FN TP]"
+    header = "Phase  Config      F1      TPR      FPR(FP/(TP+FP))   Confusion [TN FP; FN TP]"
     rows = [header, "-" * len(header)]
 
     for phase in ("P", "S"):
