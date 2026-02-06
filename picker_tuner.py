@@ -7,6 +7,8 @@ Created on Jun 24 2021
 
 import os
 import sys
+import csv
+import re
 from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
 import pandas as pd
@@ -160,6 +162,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
             f"\n\tEl canal {ch_} para la estación {sta} no es válido\n|"
 
         reference_station_file = None
+        station_comparison_collector = None
         if comparison_collector is not None:
             reference_station_file = resolve_reference_station_file(reference_picker_config, net, sta)
             if reference_station_file is None:
@@ -167,6 +170,8 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                 print(f'WARNING: No reference station file found for {net}.{sta}.')
                 print('\tSkipping reference-vs-best comparison for this station.')
                 print('\033[0m', end='\n')
+            else:
+                station_comparison_collector = ComparisonCollector()
 
         if not wf_cursor:
             wf_cursor = cursor
@@ -240,6 +245,12 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         image_dir = dir_maker.make_dir(CWD, 'images')
         
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Optimizing pickers\n')
+        phase_event_ids = {'P': [], 'S': []}
+        if station_comparison_collector is not None:
+            phase_event_ids = {
+                phase: event_ids_from_times_file(times_paths[phase], sta, loc, ch_)
+                for phase in ['P', 'S']
+            }
         for phase in ['P', 'S']:
             write_current_exc(times_paths[phase], picks_dir, inv_xml, debug,
                               net, ch_, loc, sta)
@@ -268,6 +279,23 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
 
             comparison_collector.add(phase, 'best', best_pick_counts)
             comparison_collector.add(phase, 'reference', ref_pick_counts)
+            station_comparison_collector.add(phase, 'best', best_pick_counts)
+            station_comparison_collector.add(phase, 'reference', ref_pick_counts)
+
+        if station_comparison_collector is not None:
+            report_path = write_station_comparison_report(
+                station_comparison_collector,
+                net=net,
+                sta=sta,
+                radius=radius,
+                ti=ti,
+                tf=tf,
+                max_picks=MAX_PICKS,
+                n_trials=n_trials,
+                phase_event_ids=phase_event_ids,
+                output_dir=dir_maker.make_dir(CWD, 'comparison_reports'),
+            )
+            print(f'\n\tComparison report written: {report_path}\n')
 
     if comparison_collector is not None:
         print('\n\033[96mOverall reference vs best picker comparison\033[0m')
@@ -307,6 +335,95 @@ def evaluate_reference_phase(reference_xml_path: str):
     _, _, pick_counts = stalta.mega_sta_lta(config_db_path=reference_xml_path,
                                             collect_pick_level=True)
     return pick_counts
+
+
+def _safe_token(value):
+    token = str(value).strip().replace(' ', 'T').replace(':', '')
+    return re.sub(r'[^A-Za-z0-9._-]+', '-', token)
+
+
+def _waveform_event_id(wf_path: str, sta: str, loc: str, ch: str):
+    """
+    Extract event id from waveform filename:
+    <event_id>.<sta>.<loc>.<ch>_<time>.mseed
+    """
+    filename = os.path.basename(wf_path).strip()
+    if filename.endswith('.mseed'):
+        filename = filename[:-6]
+    if '_' not in filename:
+        return None
+    left = filename.rsplit('_', 1)[0]
+    suffix = f'.{sta}.{loc}.{ch}'
+    if left.endswith(suffix):
+        return left[:-len(suffix)]
+    parts = left.rsplit('.', 3)
+    if len(parts) == 4:
+        return parts[0]
+    return None
+
+
+def event_ids_from_times_file(times_file: str, sta: str, loc: str, ch: str):
+    event_ids = set()
+    if not os.path.isfile(times_file):
+        return []
+    with open(times_file, 'r', newline='') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if not row:
+                continue
+            event_id = _waveform_event_id(row[0], sta, loc, ch)
+            if event_id is None:
+                continue
+            # Report only real events (exclude noise windows)
+            if event_id.endswith('_NOISE'):
+                continue
+            event_ids.add(event_id)
+    return sorted(event_ids)
+
+
+def _collector_has_counts(collector):
+    for phase in ('P', 'S'):
+        for label in ('reference', 'best'):
+            counts = collector.data[phase][label]
+            if counts['tp'] or counts['fp'] or counts['fn']:
+                return True
+    return False
+
+
+def write_station_comparison_report(collector, net, sta, radius, ti, tf,
+                                    max_picks, n_trials, phase_event_ids,
+                                    output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    filename = (
+        f'{_safe_token(net)}_{_safe_token(sta)}_{_safe_token(f"{float(radius):g}")}_'
+        f'{_safe_token(ti)}_{_safe_token(tf)}_{_safe_token(max_picks)}_{_safe_token(n_trials)}.txt'
+    )
+    path = os.path.join(output_dir, filename)
+
+    with open(path, 'w') as f:
+        f.write(f'NET: {net}\n')
+        f.write(f'STA: {sta}\n')
+        f.write(f'radius: {radius}\n')
+        f.write(f'start_time: {ti}\n')
+        f.write(f'end_time: {tf}\n')
+        f.write(f'max_picks: {max_picks}\n')
+        f.write(f'n_trials: {n_trials}\n\n')
+
+        for phase in ('P', 'S'):
+            ids = phase_event_ids.get(phase, [])
+            f.write(f'{phase} event_ids ({len(ids)}):\n')
+            if ids:
+                f.write(','.join(ids) + '\n\n')
+            else:
+                f.write('none\n\n')
+
+        f.write('Overall reference vs best picker comparison\n')
+        if _collector_has_counts(collector):
+            f.write(format_comparison_table(collector) + '\n')
+        else:
+            f.write('No comparable reference-vs-best evaluation samples were collected.\n')
+
+    return path
 
 def not_tuned_station(station):
     with open('stations_not_tuned.txt', 'a') as f:
