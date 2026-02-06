@@ -95,7 +95,13 @@ def test_write_station_comparison_report_file_name_and_content(tmp_path):
             'P': '/tmp/exc_best_4O_GV02_P.xml',
             'S': '/tmp/exc_best_4O_GV02_S.xml',
         },
+        reference_xml_paths={
+            'P': '/tmp/exc_reference_4O_GV02_P.xml',
+            'S': '/tmp/exc_reference_4O_GV02_S.xml',
+        },
         inv_xml='/tmp/inventory.xml',
+        loc='00',
+        ch='HH',
         output_dir=str(tmp_path),
     )
 
@@ -112,6 +118,9 @@ def test_write_station_comparison_report_file_name_and_content(tmp_path):
     assert 'scautopick commands using best XML' in content
     assert '--config-db /tmp/exc_best_4O_GV02_P.xml' in content
     assert '; scrttv /tmp/evt1.GV02.00.HH_20251015T010101.mseed -i ' in content
+    assert 'scautopick commands using reference XML (P pick waveforms)' in content
+    assert '--config-db /tmp/exc_reference_4O_GV02_P.xml' in content
+    assert '_reference_picks.xml' in content
     assert 'evt1_NOISE.GV02.00.HH_20251015T005901.mseed' in content
     assert 'Overall reference vs best picker comparison' in content
     assert 'reference' in content

@@ -251,6 +251,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         phase_event_ids = {'P': [], 'S': []}
         phase_waveforms = {'P': [], 'S': []}
         best_xml_paths = {'P': None, 'S': None}
+        reference_xml_paths = {'P': None, 'S': None}
         if station_comparison_collector is not None:
             phase_event_ids = {
                 phase: event_ids_from_times_file(times_paths[phase], sta, loc, ch_)
@@ -284,6 +285,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                                                        best_xml_path=best_xml_path)
                 ref_pick_counts = evaluate_reference_phase(reference_xml_path)
                 best_xml_paths[phase] = best_xml_path
+                reference_xml_paths[phase] = reference_xml_path
             except Exception as exc:
                 print('\033[91m\n\t', end='')
                 print(f'WARNING: Comparison failed for {net}.{sta} {phase}: {exc}')
@@ -300,6 +302,8 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                 station_comparison_collector,
                 net=net,
                 sta=sta,
+                loc=loc,
+                ch=ch_,
                 radius=radius,
                 ti=ti,
                 tf=tf,
@@ -308,6 +312,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                 phase_event_ids=phase_event_ids,
                 phase_waveforms=phase_waveforms,
                 best_xml_paths=best_xml_paths,
+                reference_xml_paths=reference_xml_paths,
                 inv_xml=inv_xml,
                 output_dir=dir_maker.make_dir(CWD, 'comparison_reports'),
             )
@@ -429,7 +434,8 @@ def _collector_has_counts(collector):
 
 def write_station_comparison_report(collector, net, sta, radius, ti, tf,
                                     max_picks, n_trials, phase_event_ids,
-                                    phase_waveforms, best_xml_paths, inv_xml,
+                                    phase_waveforms, best_xml_paths,
+                                    reference_xml_paths, inv_xml, loc, ch,
                                     output_dir):
     os.makedirs(output_dir, exist_ok=True)
     replay_root = os.path.join(output_dir, 'replay_picks', f'{net}_{sta}')
@@ -477,6 +483,40 @@ def write_station_comparison_report(collector, net, sta, radius, ti, tf,
                 cmd = (
                     f"scautopick -I {shlex.quote(wf_path)} "
                     f"--config-db {shlex.quote(best_xml_path)} "
+                    f"--amplitudes 0 --inventory-db {shlex.quote(inv_xml)} "
+                    f"--playback --ep > {shlex.quote(out_xml)}; "
+                    f"scrttv {shlex.quote(wf_path)} -i {shlex.quote(out_xml)}"
+                )
+                f.write(cmd + '\n')
+            f.write('\n')
+
+        f.write('scautopick commands using reference XML (P pick waveforms)\n')
+        p_reference_xml = reference_xml_paths.get('P')
+        p_waveforms = phase_waveforms.get('P', [])
+        f.write(f'P reference_xml: {p_reference_xml if p_reference_xml else "none"}\n')
+        p_pick_waveforms = []
+        for wf_path in p_waveforms:
+            event_id = _waveform_event_id(wf_path, sta, loc=loc, ch=ch)
+            # Fallback for any channel/location code mismatch in filename parsing:
+            if event_id is None:
+                basename = os.path.basename(wf_path)
+                event_id = basename.split('.', 1)[0] if '.' in basename else basename
+            if str(event_id).endswith('_NOISE'):
+                continue
+            p_pick_waveforms.append(wf_path)
+        f.write(f'P reference scautopick commands ({len(p_pick_waveforms)}):\n')
+        if not p_reference_xml or not p_pick_waveforms:
+            f.write('none\n\n')
+        else:
+            replay_phase_dir = os.path.join(replay_root, 'P')
+            for wf_path in p_pick_waveforms:
+                out_xml = os.path.join(
+                    replay_phase_dir,
+                    f'{os.path.basename(wf_path).rsplit(".", 1)[0]}_reference_picks.xml',
+                )
+                cmd = (
+                    f"scautopick -I {shlex.quote(wf_path)} "
+                    f"--config-db {shlex.quote(p_reference_xml)} "
                     f"--amplitudes 0 --inventory-db {shlex.quote(inv_xml)} "
                     f"--playback --ep > {shlex.quote(out_xml)}; "
                     f"scrttv {shlex.quote(wf_path)} -i {shlex.quote(out_xml)}"
