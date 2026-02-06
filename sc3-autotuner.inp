@@ -42,6 +42,12 @@ fdsn_ip = http://scarchive.beg.utexas.edu, http://rtserve.beg.utexas.edu
 # Download noise windows for each P pick? True or False
 download_noise_p = True
 
+# Optional: reference picker config for best-vs-reference comparison.
+# It can be:
+# 1) a single station file (e.g. /path/to/station_4O_GV02)
+# 2) a directory containing station_NET_STA files
+#reference_picker_config = /path/to/reference_station_configs
+
 # Maximun number of manual picks per station to use for tuning
 max_picks = 5
 

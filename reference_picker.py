@@ -1,0 +1,245 @@
+"""Helpers for evaluating reference scautopick station configurations."""
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import os
+import re
+import xml.etree.ElementTree as ET
+
+import numpy as np
+
+
+SCHEMA_NS = "http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.10"
+
+
+def _strip_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
+
+
+def load_station_picker_params(config_path: str) -> dict:
+    """Load a station_NET_STA config file into a key-value dictionary."""
+    params = {}
+    with open(config_path, "r") as fh:
+        for raw_line in fh:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            params[key.strip()] = _strip_quotes(value)
+    return params
+
+
+def resolve_reference_station_file(reference_picker_config: str, net: str, sta: str) -> str:
+    """
+    Resolve the reference station config file path for a station.
+    Supports:
+    - direct file path
+    - directory containing station_NET_STA files
+    """
+    reference_picker_config = os.path.abspath(os.path.expanduser(reference_picker_config))
+    if not os.path.exists(reference_picker_config):
+        return None
+
+    if os.path.isfile(reference_picker_config):
+        basename = os.path.basename(reference_picker_config)
+        match = re.match(r"^station_([^_]+)_([^_.]+)(?:\..+)?$", basename)
+        if match and (match.group(1), match.group(2)) != (net, sta):
+            return None
+        return reference_picker_config
+
+    candidates = [
+        f"station_{net}_{sta}",
+        f"station_{net}_{sta}.cfg",
+        f"{net}_{sta}",
+        f"{net}_{sta}.cfg",
+    ]
+    for candidate in candidates:
+        path = os.path.join(reference_picker_config, candidate)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def _tag(name: str) -> str:
+    return f"{{{SCHEMA_NS}}}{name}"
+
+
+def build_reference_scautopick_xml(
+    station_config_file: str,
+    output_xml_path: str,
+    net: str,
+    sta: str,
+    loc: str,
+    ch: str,
+) -> str:
+    """
+    Build a SeisComP config XML for scautopick using a station_NET_STA file.
+    """
+    ET.register_namespace("", SCHEMA_NS)
+    params = load_station_picker_params(station_config_file)
+
+    detec_stream = params.get("detecStream", ch)
+    detec_locid = params.get("detecLocid", loc)
+    picker_params = {
+        key: value
+        for key, value in params.items()
+        if key not in {"detecStream", "detecLocid"}
+    }
+    picker_params.setdefault("trigOff", "1")
+    picker_params.setdefault("timeCorr", "0.0")
+
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    station_base = f"ParameterSet/trunk/Station/{net}/{sta}"
+    default_id = f"{station_base}/default"
+    pick_id = f"{station_base}/pickbayes"
+    gaps_id = f"{station_base}/gaps"
+
+    root = ET.Element(_tag("seiscomp"), version="0.10")
+    config = ET.SubElement(root, _tag("Config"))
+
+    pset_default = ET.SubElement(
+        config,
+        _tag("parameterSet"),
+        publicID=default_id,
+        created=now,
+    )
+    ET.SubElement(pset_default, _tag("moduleID")).text = "Config/trunk"
+    _append_parameter(pset_default, "detecStream", detec_stream, 0)
+    _append_parameter(pset_default, "detecLocid", detec_locid, 1)
+
+    pset_pick = ET.SubElement(
+        config,
+        _tag("parameterSet"),
+        publicID=pick_id,
+        created=now,
+    )
+    ET.SubElement(pset_pick, _tag("baseID")).text = default_id
+    ET.SubElement(pset_pick, _tag("moduleID")).text = "Config/trunk"
+    for i, (name, value) in enumerate(picker_params.items(), start=2):
+        _append_parameter(pset_pick, name, value, i)
+
+    pset_gaps = ET.SubElement(
+        config,
+        _tag("parameterSet"),
+        publicID=gaps_id,
+        created=now,
+    )
+    ET.SubElement(pset_gaps, _tag("baseID")).text = default_id
+    ET.SubElement(pset_gaps, _tag("moduleID")).text = "Config/trunk"
+    _append_parameter(pset_gaps, "enable", "true", 9999)
+
+    module = ET.SubElement(
+        config,
+        _tag("module"),
+        publicID="Config/trunk",
+        name="trunk",
+        enabled="true",
+    )
+    station = ET.SubElement(
+        module,
+        _tag("station"),
+        publicID=f"Config/trunk/{net}/{sta}",
+        networkCode=net,
+        stationCode=sta,
+        enabled="true",
+    )
+    creation = ET.SubElement(station, _tag("creationInfo"))
+    ET.SubElement(creation, _tag("agencyID")).text = "AUTOTUNER"
+    ET.SubElement(creation, _tag("author")).text = "sc3-autotuner"
+    ET.SubElement(creation, _tag("creationTime")).text = now
+
+    setup_default = ET.SubElement(station, _tag("setup"), name="default", enabled="true")
+    ET.SubElement(setup_default, _tag("parameterSetID")).text = default_id
+    setup_pick = ET.SubElement(station, _tag("setup"), name="scautopick", enabled="true")
+    ET.SubElement(setup_pick, _tag("parameterSetID")).text = pick_id
+    setup_gaps = ET.SubElement(station, _tag("setup"), name="gaps", enabled="true")
+    ET.SubElement(setup_gaps, _tag("parameterSetID")).text = gaps_id
+
+    os.makedirs(os.path.dirname(output_xml_path), exist_ok=True)
+    tree = ET.ElementTree(root)
+    try:
+        ET.indent(tree, space="  ")
+    except AttributeError:
+        pass
+    tree.write(output_xml_path, encoding="UTF-8", xml_declaration=True)
+    return output_xml_path
+
+
+def _append_parameter(parent, name: str, value: str, idx: int):
+    parameter = ET.SubElement(parent, _tag("parameter"), publicID=f"Parameter/reference/{idx}")
+    ET.SubElement(parameter, _tag("name")).text = name
+    ET.SubElement(parameter, _tag("value")).text = str(value)
+
+
+def compute_binary_metrics(y_obs, y_pred) -> dict:
+    """Compute F1, TPR, FPR and confusion matrix from binary arrays."""
+    y_obs = np.asarray(y_obs).ravel() > 0.5
+    y_pred = np.asarray(y_pred).ravel() > 0.5
+
+    tp = int(np.sum(y_obs & y_pred))
+    tn = int(np.sum(~y_obs & ~y_pred))
+    fp = int(np.sum(~y_obs & y_pred))
+    fn = int(np.sum(y_obs & ~y_pred))
+
+    f1_den = 2 * tp + fp + fn
+    tpr_den = tp + fn
+    fpr_den = fp + tn
+
+    f1 = (2 * tp / f1_den) if f1_den else 0.0
+    tpr = (tp / tpr_den) if tpr_den else 0.0
+    fpr = (fp / fpr_den) if fpr_den else 0.0
+
+    return {
+        "f1": f1,
+        "tpr": tpr,
+        "fpr": fpr,
+        "confusion": [[tn, fp], [fn, tp]],
+    }
+
+
+@dataclass
+class ComparisonCollector:
+    """Collects per-phase predictions for best-vs-reference reporting."""
+
+    data: dict = field(default_factory=lambda: {
+        "P": {"reference": {"obs": [], "pred": []}, "best": {"obs": [], "pred": []}},
+        "S": {"reference": {"obs": [], "pred": []}, "best": {"obs": [], "pred": []}},
+    })
+
+    def add(self, phase: str, label: str, y_obs, y_pred):
+        self.data[phase][label]["obs"].append(np.asarray(y_obs))
+        self.data[phase][label]["pred"].append(np.asarray(y_pred))
+
+    def metrics(self, phase: str, label: str):
+        obs_parts = self.data[phase][label]["obs"]
+        pred_parts = self.data[phase][label]["pred"]
+        if not obs_parts or not pred_parts:
+            return None
+        y_obs = np.concatenate(obs_parts)
+        y_pred = np.concatenate(pred_parts)
+        return compute_binary_metrics(y_obs, y_pred)
+
+
+def format_comparison_table(collector: ComparisonCollector) -> str:
+    """Render an aligned table for P and S overall comparison."""
+    header = "Phase  Config      F1      TPR      FPR   Confusion [TN FP; FN TP]"
+    rows = [header, "-" * len(header)]
+
+    for phase in ("P", "S"):
+        for label in ("reference", "best"):
+            metrics = collector.metrics(phase, label)
+            if metrics is None:
+                continue
+            confusion = metrics["confusion"]
+            cm_str = f"[{confusion[0][0]} {confusion[0][1]}; {confusion[1][0]} {confusion[1][1]}]"
+            rows.append(
+                f"{phase:<5}  {label:<9}  {metrics['f1']:.4f}  {metrics['tpr']:.4f}  {metrics['fpr']:.4f}  {cm_str}"
+            )
+
+    if len(rows) == 2:
+        rows.append("No comparable reference-vs-best evaluation samples were collected.")
+
+    return "\n".join(rows)

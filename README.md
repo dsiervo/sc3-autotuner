@@ -127,6 +127,12 @@ The following parameters are explained below:
 
 **-** `n_trials`: Number of attempts the program will make to tune the picker for each phase and station.
 
+**-** `reference_picker_config` (optional): Path to a single `station_NET_STA`
+file or to a directory containing these files. When provided, the tuner runs
+the reference picker settings on the same waveforms used by Bayesian
+optimization and prints an overall P/S comparison table (`F1`, `TPR`, `FPR`,
+confusion matrix) against the best tuned result.
+
 ## Program Output
 ### Important Files
 * Folder `output_station_files`: Contains the tuning results for each station in the appropriate format for incorporation into SeisComP3. To add these results to your system, copy these files to the `seicomp3/etc/key/scautopick` directory and add the following line to the corresponding files in the `seicomp3/etc/key/` path:
@@ -142,3 +148,4 @@ The following parameters are explained below:
 * `exc_<station>_<phase>.xml`: Contains the picker parameters for the last iteration.
 * `mseed_data`: Folder containing the waveforms used in the tuning process.
 * `picks_xml`: Folder containing XML files in SeisComP3 format with the picks generated in the last iteration.
+* `reference_exc_xml` (optional): Folder containing generated XML config files used to run `scautopick` with the reference picker configuration.

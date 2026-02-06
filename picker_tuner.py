@@ -9,8 +9,16 @@ import os
 import sys
 from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
+import pandas as pd
 from MySQLdb import OperationalError
 from optimizer import bayes_optuna
+from reference_picker import (
+    ComparisonCollector,
+    build_reference_scautopick_xml,
+    format_comparison_table,
+    resolve_reference_station_file,
+)
+from stalta import StaLta
 from icecream import ic, install
 ic.configureOutput(prefix='debug| ')  # , includeContext=True)
 install()
@@ -119,6 +127,21 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
     dir_maker = DirectoryCreator()
     main_data_dir = dir_maker.make_dir(CWD, 'mseed_data')
     ic(main_data_dir)
+
+    reference_picker_config = params.get('reference_picker_config')
+    comparison_collector = None
+    reference_xml_dir = None
+    if reference_picker_config:
+        reference_picker_config = os.path.abspath(os.path.expanduser(reference_picker_config))
+        if not os.path.exists(reference_picker_config):
+            print('\033[91m\n\n\t', end='')
+            print(f'WARNING: reference_picker_config path does not exist: {reference_picker_config}')
+            print('\tReference comparison disabled.')
+            print('\033[0m', end='\n')
+        else:
+            comparison_collector = ComparisonCollector()
+            reference_xml_dir = dir_maker.make_dir(CWD, 'reference_exc_xml')
+            print(f'\n\tReference picker comparison enabled with: {reference_picker_config}\n')
     
     try:
         # Iterating over the list of stations
@@ -135,6 +158,15 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         net, sta, loc, ch_ = station_str.split('.')
         assert len(ch_) == 2,\
             f"\n\tEl canal {ch_} para la estación {sta} no es válido\n|"
+
+        reference_station_file = None
+        if comparison_collector is not None:
+            reference_station_file = resolve_reference_station_file(reference_picker_config, net, sta)
+            if reference_station_file is None:
+                print('\033[91m\n\t', end='')
+                print(f'WARNING: No reference station file found for {net}.{sta}.')
+                print('\tSkipping reference-vs-best comparison for this station.')
+                print('\033[0m', end='\n')
 
         if not wf_cursor:
             wf_cursor = cursor
@@ -213,6 +245,65 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                               net, ch_, loc, sta)
             ic(phase)
             bayes_optuna(net, sta, loc, ch_, phase, n_trials)
+
+            if comparison_collector is None or reference_station_file is None:
+                continue
+
+            reference_xml_path = os.path.join(reference_xml_dir,
+                                              f'exc_reference_{sta}_{phase}.xml')
+            try:
+                build_reference_scautopick_xml(reference_station_file,
+                                               reference_xml_path,
+                                               net,
+                                               sta,
+                                               loc,
+                                               ch_)
+                best_y_obs, best_y_pred = evaluate_best_phase(net, sta, phase)
+                ref_y_obs, ref_y_pred = evaluate_reference_phase(reference_xml_path)
+            except Exception as exc:
+                print('\033[91m\n\t', end='')
+                print(f'WARNING: Comparison failed for {net}.{sta} {phase}: {exc}')
+                print('\033[0m', end='\n')
+                continue
+
+            comparison_collector.add(phase, 'best', best_y_obs, best_y_pred)
+            comparison_collector.add(phase, 'reference', ref_y_obs, ref_y_pred)
+
+    if comparison_collector is not None:
+        print('\n\033[96mOverall reference vs best picker comparison\033[0m')
+        print(format_comparison_table(comparison_collector))
+
+
+def _best_params_from_csv(net: str, sta: str, phase: str) -> dict:
+    csv_path = f'results_{phase}.csv'
+    df = pd.read_csv(csv_path)
+    best_rows = df[df['net.sta'] == f'{net}.{sta}'].sort_values(by='best_f1',
+                                                                ascending=False)
+    if best_rows.empty:
+        raise ValueError(f'No best parameters found in {csv_path} for {net}.{sta}')
+    return best_rows.iloc[0].to_dict()
+
+
+def best_eval_params(net: str, sta: str, phase: str) -> dict:
+    p_params = _best_params_from_csv(net, sta, 'P')
+    required = ['p_sta', 'p_lta', 'p_fmin', 'p_fmax', 'p_snr', 'trig_on']
+    params = {key: p_params[key] for key in required}
+
+    if phase == 'S':
+        s_params = _best_params_from_csv(net, sta, 'S')
+        params.update({key: s_params[key] for key in ['s_snr', 's_fmin', 's_fmax']})
+    return params
+
+
+def evaluate_best_phase(net: str, sta: str, phase: str):
+    stalta = StaLta()
+    params = best_eval_params(net, sta, phase)
+    return stalta.mega_sta_lta(**params)
+
+
+def evaluate_reference_phase(reference_xml_path: str):
+    stalta = StaLta()
+    return stalta.mega_sta_lta(config_db_path=reference_xml_path)
 
 def not_tuned_station(station):
     with open('stations_not_tuned.txt', 'a') as f:

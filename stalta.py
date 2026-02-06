@@ -90,13 +90,16 @@ class StaLta:
         else:
             return int(os.cpu_count() * 1)
 
-    def mega_sta_lta(self, **kwargs):
+    def mega_sta_lta(self, config_db_path=None, **kwargs):
         """
         Compute sta/lta for all lines in the file
         """
         kwargs.update(self._current_exc_params)
         self.remove_picks_dir()
-        self.edit_xml_config(**kwargs)
+        if config_db_path is None:
+            self.edit_xml_config(**kwargs)
+        else:
+            self.xml_exc_path = config_db_path
         
         Y_obs_ = []
         Y_pred_ = []
