@@ -12,11 +12,11 @@ s_fmax_name = 's_fmax'
 OPTIMIZATION_PARAMS = {
     'P': {
         p_sta_name: {'min': 1, 'max': 5, 'step': 1, 'type': 'int'},
-        p_lta_name: {'min': 2, 'max': 20, 'step': 1, 'type': 'int'},
+        p_lta_name: {'min': 2, 'max': 15, 'step': 1, 'type': 'int'},
         p_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
         p_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'},
         p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
-        trig_on_name: {'min': 2, 'max': 15, 'step': 0.01, 'type': 'float'}
+        trig_on_name: {'min': 2, 'max': 8, 'step': 0.01, 'type': 'float'}
     },
     'S': {
         s_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
@@ -30,7 +30,8 @@ DEFAULT_VALUES = {
     'p_timecorr': 0.0,
     'aic_fmin': 1,
     'aic_fwidth': 0,
-    'picker_aic_filter': 'BW(4,{p_fmin},{p_fmax})'
+    # 'picker_aic_filter': 'BW(4,{p_fmin},{p_fmax})'
+    'picker_aic_filter': 'ITAPER(1)>>BW(4,3,20)'
 }
 
 # Mapping from SeisComP configuration parameter names to the template values
