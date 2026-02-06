@@ -16,7 +16,7 @@ OPTIMIZATION_PARAMS = {
         p_fmin_name: {'min': 1, 'max': 20, 'step': 1, 'type': 'int'},
         p_fmax_name: {'min': 4, 'max': 40, 'step': 1, 'type': 'int'},
         p_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},
-        trig_on_name: {'min': 2, 'max': 8, 'step': 0.01, 'type': 'float'}
+        trig_on_name: {'min': 2, 'max': 7, 'step': 0.25, 'type': 'float'}
     },
     'S': {
         s_snr_name: {'min': 1, 'max': 4, 'step': 1, 'type': 'int'},

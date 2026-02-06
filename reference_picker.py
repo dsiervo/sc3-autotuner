@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import os
 import re
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 import numpy as np
 
@@ -162,11 +163,7 @@ def build_reference_scautopick_xml(
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     tree = ET.ElementTree(root)
-    try:
-        ET.indent(tree, space="  ")
-    except AttributeError:
-        pass
-    tree.write(output_xml_path, encoding="UTF-8", xml_declaration=True)
+    write_pretty_xml(tree, output_xml_path)
     return output_xml_path
 
 
@@ -174,6 +171,20 @@ def _append_parameter(parent, name: str, value: str, idx: int):
     parameter = ET.SubElement(parent, _tag("parameter"), publicID=f"Parameter/reference/{idx}")
     ET.SubElement(parameter, _tag("name")).text = name
     ET.SubElement(parameter, _tag("value")).text = str(value)
+
+
+def write_pretty_xml(tree: ET.ElementTree, output_xml_path: str):
+    """
+    Write XML with indentation across Python versions.
+    """
+    try:
+        ET.indent(tree, space="  ")
+        tree.write(output_xml_path, encoding="UTF-8", xml_declaration=True)
+    except AttributeError:
+        raw = ET.tostring(tree.getroot(), encoding='utf-8')
+        pretty = minidom.parseString(raw).toprettyxml(indent='  ', encoding='UTF-8')
+        with open(output_xml_path, 'wb') as f:
+            f.write(pretty)
 
 
 def compute_binary_metrics(y_obs, y_pred) -> dict:

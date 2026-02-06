@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 import pandas as pd
 from obspy.core import UTCDateTime
 import numpy as np
@@ -95,7 +96,7 @@ class StaLta:
             return int(os.cpu_count() * 1)
 
     def mega_sta_lta(self, config_db_path=None, collect_pick_level=False,
-                     pick_match_unc=None, **kwargs):
+                     pick_match_unc=None, xml_output_path=None, **kwargs):
         """
         Compute sta/lta for all lines in the file
         """
@@ -104,7 +105,7 @@ class StaLta:
         self.collect_pick_level = collect_pick_level
         self.pick_match_unc = BinaryTransform.unc if pick_match_unc is None else float(pick_match_unc)
         if config_db_path is None:
-            self.edit_xml_config(**kwargs)
+            self.edit_xml_config(output_xml_path=xml_output_path, **kwargs)
         else:
             self.xml_exc_path = config_db_path
         
@@ -302,7 +303,30 @@ class StaLta:
     def xml_exc_name(self):
         return f'exc_{self.station_name}_{self.phase}.xml'
     
-    def edit_xml_config(self, **kwargs):
+    @staticmethod
+    def _pretty_xml_text(xml_text):
+        """
+        Return a consistently indented XML string across Python versions.
+        """
+        try:
+            root = ET.fromstring(xml_text)
+            tree = ET.ElementTree(root)
+            try:
+                ET.indent(tree, space='  ')
+                pretty_body = ET.tostring(root, encoding='unicode')
+            except AttributeError:
+                pretty_body = minidom.parseString(xml_text.encode('utf-8')).toprettyxml(indent='  ')
+                pretty_body = '\n'.join(
+                    line for line in pretty_body.splitlines() if line.strip()
+                )
+
+            if pretty_body.lstrip().startswith('<?xml'):
+                return pretty_body
+            return '<?xml version="1.0" encoding="UTF-8"?>\n' + pretty_body
+        except Exception:
+            return xml_text
+
+    def edit_xml_config(self, output_xml_path=None, **kwargs):
         """
         Edit the config.xml file
         """
@@ -334,10 +358,14 @@ class StaLta:
             xml_str = f.read()
         
         # xml path for the excecution of scautopick
-        self.xml_exc_path = os.path.join(os.getcwd(), self.xml_exc_name)
+        self.xml_exc_path = output_xml_path or os.path.join(os.getcwd(), self.xml_exc_name)
+        xml_out_dir = os.path.dirname(self.xml_exc_path)
+        if xml_out_dir:
+            os.makedirs(xml_out_dir, exist_ok=True)
         # Edit the config.xml file
+        xml_rendered = self._pretty_xml_text(xml_str.format(**kwargs))
         with open(self.xml_exc_path, 'w') as f:
-            f.write(ic(xml_str.format(**kwargs)))
+            f.write(ic(xml_rendered))
     
     def run_scautopick(self):
         """

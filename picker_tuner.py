@@ -9,6 +9,7 @@ import os
 import sys
 import csv
 import re
+import shlex
 from download_data import Query, Station, waveform_downloader, DirectoryCreator
 import obspy
 import pandas as pd
@@ -133,6 +134,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
     reference_picker_config = params.get('reference_picker_config')
     comparison_collector = None
     reference_xml_dir = None
+    best_xml_dir = None
     if reference_picker_config:
         reference_picker_config = os.path.abspath(os.path.expanduser(reference_picker_config))
         if not os.path.exists(reference_picker_config):
@@ -143,6 +145,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         else:
             comparison_collector = ComparisonCollector()
             reference_xml_dir = dir_maker.make_dir(CWD, 'reference_exc_xml')
+            best_xml_dir = dir_maker.make_dir(CWD, 'best_exc_xml')
             print(f'\n\tReference picker comparison enabled with: {reference_picker_config}\n')
     
     try:
@@ -246,9 +249,15 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         
         print(f'\n\n\033[95m {net}.{sta}.{ch_} |\033[0m Optimizing pickers\n')
         phase_event_ids = {'P': [], 'S': []}
+        phase_waveforms = {'P': [], 'S': []}
+        best_xml_paths = {'P': None, 'S': None}
         if station_comparison_collector is not None:
             phase_event_ids = {
                 phase: event_ids_from_times_file(times_paths[phase], sta, loc, ch_)
+                for phase in ['P', 'S']
+            }
+            phase_waveforms = {
+                phase: waveform_paths_from_times_file(times_paths[phase])
                 for phase in ['P', 'S']
             }
         for phase in ['P', 'S']:
@@ -269,8 +278,12 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                                                sta,
                                                loc,
                                                ch_)
-                best_pick_counts = evaluate_best_phase(net, sta, phase)
+                best_xml_path = os.path.join(best_xml_dir,
+                                             f'exc_best_{net}_{sta}_{phase}.xml')
+                best_pick_counts = evaluate_best_phase(net, sta, phase,
+                                                       best_xml_path=best_xml_path)
                 ref_pick_counts = evaluate_reference_phase(reference_xml_path)
+                best_xml_paths[phase] = best_xml_path
             except Exception as exc:
                 print('\033[91m\n\t', end='')
                 print(f'WARNING: Comparison failed for {net}.{sta} {phase}: {exc}')
@@ -293,6 +306,9 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                 max_picks=MAX_PICKS,
                 n_trials=n_trials,
                 phase_event_ids=phase_event_ids,
+                phase_waveforms=phase_waveforms,
+                best_xml_paths=best_xml_paths,
+                inv_xml=inv_xml,
                 output_dir=dir_maker.make_dir(CWD, 'comparison_reports'),
             )
             print(f'\n\tComparison report written: {report_path}\n')
@@ -323,10 +339,12 @@ def best_eval_params(net: str, sta: str, phase: str) -> dict:
     return params
 
 
-def evaluate_best_phase(net: str, sta: str, phase: str):
+def evaluate_best_phase(net: str, sta: str, phase: str, best_xml_path=None):
     stalta = StaLta()
     params = best_eval_params(net, sta, phase)
-    _, _, pick_counts = stalta.mega_sta_lta(collect_pick_level=True, **params)
+    _, _, pick_counts = stalta.mega_sta_lta(collect_pick_level=True,
+                                            xml_output_path=best_xml_path,
+                                            **params)
     return pick_counts
 
 
@@ -381,6 +399,25 @@ def event_ids_from_times_file(times_file: str, sta: str, loc: str, ch: str):
     return sorted(event_ids)
 
 
+def waveform_paths_from_times_file(times_file: str):
+    if not os.path.isfile(times_file):
+        return []
+
+    waveforms = []
+    seen = set()
+    with open(times_file, 'r', newline='') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if not row:
+                continue
+            wf_path = row[0].strip()
+            if wf_path == '' or wf_path in seen:
+                continue
+            seen.add(wf_path)
+            waveforms.append(wf_path)
+    return waveforms
+
+
 def _collector_has_counts(collector):
     for phase in ('P', 'S'):
         for label in ('reference', 'best'):
@@ -392,8 +429,13 @@ def _collector_has_counts(collector):
 
 def write_station_comparison_report(collector, net, sta, radius, ti, tf,
                                     max_picks, n_trials, phase_event_ids,
+                                    phase_waveforms, best_xml_paths, inv_xml,
                                     output_dir):
     os.makedirs(output_dir, exist_ok=True)
+    replay_root = os.path.join(output_dir, 'replay_picks', f'{net}_{sta}')
+    for phase in ('P', 'S'):
+        os.makedirs(os.path.join(replay_root, phase), exist_ok=True)
+
     filename = (
         f'{_safe_token(net)}_{_safe_token(sta)}_{_safe_token(f"{float(radius):g}")}_'
         f'{_safe_token(ti)}_{_safe_token(tf)}_{_safe_token(max_picks)}_{_safe_token(n_trials)}.txt'
@@ -416,6 +458,31 @@ def write_station_comparison_report(collector, net, sta, radius, ti, tf,
                 f.write(','.join(ids) + '\n\n')
             else:
                 f.write('none\n\n')
+
+        f.write('scautopick commands using best XML\n')
+        for phase in ('P', 'S'):
+            wf_paths = phase_waveforms.get(phase, [])
+            best_xml_path = best_xml_paths.get(phase)
+            f.write(f'{phase} best_xml: {best_xml_path if best_xml_path else "none"}\n')
+            f.write(f'{phase} scautopick commands ({len(wf_paths)}):\n')
+            if not best_xml_path or not wf_paths:
+                f.write('none\n\n')
+                continue
+            replay_phase_dir = os.path.join(replay_root, phase)
+            for wf_path in wf_paths:
+                out_xml = os.path.join(
+                    replay_phase_dir,
+                    f'{os.path.basename(wf_path).rsplit(".", 1)[0]}_best_picks.xml',
+                )
+                cmd = (
+                    f"scautopick -I {shlex.quote(wf_path)} "
+                    f"--config-db {shlex.quote(best_xml_path)} "
+                    f"--amplitudes 0 --inventory-db {shlex.quote(inv_xml)} "
+                    f"--playback --ep > {shlex.quote(out_xml)}; "
+                    f"scrttv {shlex.quote(wf_path)} -i {shlex.quote(out_xml)}"
+                )
+                f.write(cmd + '\n')
+            f.write('\n')
 
         f.write('Overall reference vs best picker comparison\n')
         if _collector_has_counts(collector):
