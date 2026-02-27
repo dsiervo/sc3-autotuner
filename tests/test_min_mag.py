@@ -99,11 +99,12 @@ def test_picks_query_renders_min_mag():
         'radius': 200,
         'max_picks': 10,
         'min_mag': 2.5,
+        'max_mag': 3.2,
     }
 
     query = Query(cursor=cursor, query_type='picks', dic_data=params).query
 
-    assert f'between "{params["min_mag"]}" and 4.0' in query
+    assert f'between "{params["min_mag"]}" and "{params["max_mag"]}"' in query
 
 
 def test_picker_tuner_defaults_to_min_mag(tmp_path):
@@ -140,6 +141,7 @@ def test_picker_tuner_defaults_to_min_mag(tmp_path):
     picks_invocations = [q for q in QueryStub.instances if q.query_type == 'picks']
     assert picks_invocations
     assert picks_invocations[0].dic_data['min_mag'] == pytest.approx(1.2)
+    assert picks_invocations[0].dic_data['max_mag'] == pytest.approx(3.0)
 
 
 def test_picker_tuner_uses_provided_min_mag(tmp_path):
@@ -155,6 +157,7 @@ def test_picker_tuner_uses_provided_min_mag(tmp_path):
         'fdsn_ip': 'hostA,hostB',
         'stations': 'CM.BAR2.00.HH',
         'min_mag': '2.7',
+        'max_mag': '3.8',
     }
 
     def fake_make_dir(self, _root, name):
@@ -177,6 +180,7 @@ def test_picker_tuner_uses_provided_min_mag(tmp_path):
     picks_invocations = [q for q in QueryStub.instances if q.query_type == 'picks']
     assert picks_invocations
     assert picks_invocations[0].dic_data['min_mag'] == pytest.approx(2.7)
+    assert picks_invocations[0].dic_data['max_mag'] == pytest.approx(3.8)
 
 
 def test_optimizer_config_allows_extended_bandwidth():

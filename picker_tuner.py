@@ -86,6 +86,14 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
         "Wrong min_mag value given",
     )
 
+    # defining maximum magnitude for picks search
+    max_mag = parse_float_param(
+        'max_mag',
+        3.0,
+        "You did not define a max_mag parameter in the sc3-autuner.inp file",
+        "Wrong max_mag value given",
+    )
+
     # seiscomp3 inventory in xml format
     inv_xml = params['inv_xml']
     # check if inv_xml file exists
@@ -222,6 +230,7 @@ def picker_tuner(cursor, wf_cursor, ti, tf, params):
                                       'sta_lat': lat, 'sta_lon': lon,
                                       'ti': ti, 'tf': tf,
                                       'min_mag': min_mag,
+                                      'max_mag': max_mag,
                                       'radius': radius,
                                       'max_picks': MAX_PICKS})
         manual_picks = query_picks.execute_query()

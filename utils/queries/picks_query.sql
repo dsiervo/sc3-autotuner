@@ -24,7 +24,7 @@ AND pick_p.waveformID_stationCode = pick_s.waveformID_stationCode
 AND Origin.time_value between "{ti}" and "{tf}"
 AND pick_p.waveformID_networkCode = "{net}" 
 AND pick_p.waveformID_stationCode = "{sta}" 
-AND Magnitude.magnitude_value between "{min_mag}" and 4.0
+AND Magnitude.magnitude_value between "{min_mag}" and "{max_mag}"
 HAVING radius < {radius}
 order by pick_p.time_value desc
 LIMIT {max_picks}

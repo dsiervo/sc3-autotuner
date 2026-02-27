@@ -31,7 +31,7 @@
 Key parameters consumed by the runtime:
 - `tune_mode`, `debug`, `deb_url`, `ti`, `tf`, `inv_xml`
 - `sql_usr`, `sql_psw`, optional `wf_url`, `wf_sql_usr`, `wf_sql_psw`
-- `stations`, `fdsn_ip`, `max_picks`, `n_trials`, optional `radius`, `min_mag`
+- `stations`, `fdsn_ip`, `max_picks`, `n_trials`, optional `radius`, `min_mag`, `max_mag`
 - optional `download_noise_p` (controls P-phase noise window downloads)
 - optional `reference_picker_config`:
   - path to one `station_NET_STA` file, or
